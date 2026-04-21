@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 
@@ -12,15 +13,22 @@ const STATUS_STYLES: Record<string, { background: string; color: string; label: 
 }
 
 export default function Dashboard() {
+  const router = useRouter()
   const [jobs, setJobs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { fetchJobs() }, [])
+  useEffect(() => {
+    checkAuthAndFetch()
+  }, [])
 
-  const fetchJobs = async () => {
+  const checkAuthAndFetch = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { router.push('/login'); return }
+
     const { data, error } = await supabase
       .from('jobs')
       .select('*')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
     if (!error && data) setJobs(data)
     setLoading(false)
@@ -57,12 +65,17 @@ export default function Dashboard() {
             <h1 style={{ fontSize: '28px', fontWeight: '700', color: '#111827', margin: 0 }}>My applications</h1>
             <p style={{ color: '#6b7280', fontSize: '14px', marginTop: '4px' }}>{jobs.length} total</p>
           </div>
-          <Link href="/upload" style={{
-            background: '#111827', color: '#fff', padding: '10px 20px',
-            borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '500'
-          }}>
-            + Add application
-          </Link>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <Link href="/settings" style={{ fontSize: '14px', color: '#6b7280', textDecoration: 'none' }}>
+              Settings
+            </Link>
+            <Link href="/upload" style={{
+              background: '#111827', color: '#fff', padding: '10px 20px',
+              borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '500'
+            }}>
+              + Add application
+            </Link>
+          </div>
         </div>
 
         {/* Stats row */}
@@ -100,15 +113,9 @@ export default function Dashboard() {
                       <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: '0 0 4px' }}>{job.title}</h2>
                       <p style={{ fontSize: '14px', color: '#374151', margin: '0 0 8px', fontWeight: '500' }}>{job.company}</p>
                       <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                        {job.pay && (
-                          <span style={{ fontSize: '13px', color: '#6b7280' }}>💰 {job.pay}</span>
-                        )}
-                        {job.location && (
-                          <span style={{ fontSize: '13px', color: '#6b7280' }}>📍 {job.location}</span>
-                        )}
-                        {job.job_type && (
-                          <span style={{ fontSize: '13px', color: '#6b7280' }}>💼 {job.job_type}</span>
-                        )}
+                        {job.pay && <span style={{ fontSize: '13px', color: '#6b7280' }}>💰 {job.pay}</span>}
+                        {job.location && <span style={{ fontSize: '13px', color: '#6b7280' }}>📍 {job.location}</span>}
+                        {job.job_type && <span style={{ fontSize: '13px', color: '#6b7280' }}>💼 {job.job_type}</span>}
                         {job.deadline && (
                           <span style={{ fontSize: '13px', color: urgent ? '#dc2626' : '#6b7280', fontWeight: urgent ? '600' : '400' }}>
                             {urgent ? '⚠️' : '📅'} {job.deadline} ({days} days)
@@ -116,22 +123,14 @@ export default function Dashboard() {
                         )}
                       </div>
                     </div>
-
-                    {/* Right side */}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', marginLeft: '16px' }}>
                       <select
                         value={job.status}
                         onChange={(e) => updateStatus(job.id, e.target.value)}
                         style={{
-                          background: status.background,
-                          color: status.color,
-                          border: 'none',
-                          borderRadius: '20px',
-                          padding: '4px 10px',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          outline: 'none'
+                          background: status.background, color: status.color,
+                          border: 'none', borderRadius: '20px', padding: '4px 10px',
+                          fontSize: '12px', fontWeight: '600', cursor: 'pointer', outline: 'none'
                         }}
                       >
                         <option value="applied">Applied</option>
