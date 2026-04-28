@@ -20,68 +20,58 @@ export async function GET() {
       .lte('deadline', in7DaysStr)
       .eq('reminder_sent', false)
       .not('status', 'eq', 'rejected')
-      .not('user_id', 'is', null)
 
     if (error) throw error
     if (!jobs || jobs.length === 0) {
       return NextResponse.json({ message: 'No upcoming deadlines' })
     }
 
-    // Group jobs by user_id
-    const jobsByUser: Record<string, any[]> = {}
-    for (const job of jobs) {
-      if (!jobsByUser[job.user_id]) jobsByUser[job.user_id] = []
-      jobsByUser[job.user_id].push(job)
+    const toEmail = process.env.REMINDER_EMAIL
+    if (!toEmail) {
+      return NextResponse.json({ error: 'REMINDER_TO_EMAIL not configured' }, { status: 500 })
     }
 
-    // Send each user their own email
-    for (const [userId, userJobs] of Object.entries(jobsByUser)) {
-      const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId)
-      const email = userData?.user?.email
-      if (!email) continue
+    const jobList = jobs.map(job => `
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${job.company}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${job.title}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #dc2626; font-weight: 600;">${job.deadline}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${job.status}</td>
+      </tr>
+    `).join('')
 
-      const jobList = userJobs.map(job => `
-        <tr>
-          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${job.company}</td>
-          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${job.title}</td>
-          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #dc2626; font-weight: 600;">${job.deadline}</td>
-          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${job.status}</td>
-        </tr>
-      `).join('')
-
-      await resend.emails.send({
-        from: 'Application Tracker <onboarding@resend.dev>',
-        to: email,
-        subject: `⚠️ ${userJobs.length} application deadline${userJobs.length > 1 ? 's' : ''} coming up!`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
-            <h1 style="font-size: 24px; font-weight: 700; color: #111827;">Upcoming deadlines</h1>
-            <p style="color: #6b7280;">You have ${userJobs.length} application${userJobs.length > 1 ? 's' : ''} with deadlines in the next 7 days.</p>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 24px;">
-              <thead>
-                <tr style="background: #f9fafb;">
-                  <th style="padding: 12px; text-align: left; font-size: 12px; color: #6b7280;">COMPANY</th>
-                  <th style="padding: 12px; text-align: left; font-size: 12px; color: #6b7280;">ROLE</th>
-                  <th style="padding: 12px; text-align: left; font-size: 12px; color: #6b7280;">DEADLINE</th>
-                  <th style="padding: 12px; text-align: left; font-size: 12px; color: #6b7280;">STATUS</th>
-                </tr>
-              </thead>
-              <tbody>${jobList}</tbody>
-            </table>
-            <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" style="display: inline-block; margin-top: 24px; background: #111827; color: #fff; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-size: 14px;">
-              View dashboard →
-            </a>
-          </div>
-        `
-      })
-    }
+    await resend.emails.send({
+      from: 'Application Tracker <onboarding@resend.dev>',
+      to: toEmail,
+      subject: `⚠️ ${jobs.length} application deadline${jobs.length > 1 ? 's' : ''} coming up!`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+          <h1 style="font-size: 24px; font-weight: 700; color: #111827;">Upcoming deadlines</h1>
+          <p style="color: #6b7280;">You have ${jobs.length} application${jobs.length > 1 ? 's' : ''} with deadlines in the next 7 days.</p>
+          <table style="width: 100%; border-collapse: collapse; margin-top: 24px;">
+            <thead>
+              <tr style="background: #f9fafb;">
+                <th style="padding: 12px; text-align: left; font-size: 12px; color: #6b7280;">COMPANY</th>
+                <th style="padding: 12px; text-align: left; font-size: 12px; color: #6b7280;">ROLE</th>
+                <th style="padding: 12px; text-align: left; font-size: 12px; color: #6b7280;">DEADLINE</th>
+                <th style="padding: 12px; text-align: left; font-size: 12px; color: #6b7280;">STATUS</th>
+              </tr>
+            </thead>
+            <tbody>${jobList}</tbody>
+          </table>
+          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" style="display: inline-block; margin-top: 24px; background: #111827; color: #fff; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-size: 14px;">
+            View dashboard →
+          </a>
+        </div>
+      `
+    })
 
     await supabaseAdmin
       .from('jobs')
       .update({ reminder_sent: true })
       .in('id', jobs.map(j => j.id))
 
-    return NextResponse.json({ message: `Sent reminders for ${jobs.length} jobs across ${Object.keys(jobsByUser).length} users` })
+    return NextResponse.json({ message: `Sent reminder for ${jobs.length} jobs` })
   } catch (error) {
     console.error('Reminder error:', error)
     return NextResponse.json({ error: 'Failed to send reminders' }, { status: 500 })
