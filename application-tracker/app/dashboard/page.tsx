@@ -66,14 +66,14 @@ export default function Dashboard() {
             <p style={{ color: '#6b7280', fontSize: '14px', marginTop: '4px' }}>{jobs.length} total</p>
           </div>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <Link href="/settings" style={{ fontSize: '14px', color: '#6b7280', textDecoration: 'none' }}>
-              Settings
-            </Link>
             <Link href="/upload" style={{
               background: '#111827', color: '#fff', padding: '10px 20px',
               borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '500'
             }}>
               + Add application
+            </Link>
+            <Link href="/settings" style={{ fontSize: '14px', color: '#6b7280', textDecoration: 'none' }}>
+              Settings
             </Link>
           </div>
         </div>

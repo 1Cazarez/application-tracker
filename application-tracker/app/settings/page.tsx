@@ -1,12 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 
 export default function SettingsPage() {
-  const router = useRouter()
   const [geminiKey, setGeminiKey] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -14,18 +12,15 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    checkAuthAndLoad()
+    loadSettings()
   }, [])
 
-  const checkAuthAndLoad = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/login'); return }
-
+  const loadSettings = async () => {
     const { data } = await supabase
       .from('user_settings')
       .select('gemini_api_key')
-      .eq('user_id', user.id)
-      .single()
+      .limit(1)
+      .maybeSingle()
 
     if (data?.gemini_api_key) setGeminiKey(data.gemini_api_key)
     setLoading(false)
@@ -36,12 +31,9 @@ export default function SettingsPage() {
     setError(null)
     setMessage(null)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not logged in')
-
       const { error } = await supabase
         .from('user_settings')
-        .upsert({ user_id: user.id, gemini_api_key: geminiKey })
+        .upsert({ gemini_api_key: geminiKey })
 
       if (error) throw error
       setMessage('Saved successfully!')
@@ -50,11 +42,6 @@ export default function SettingsPage() {
     } finally {
       setSaving(false)
     }
-  }
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/login')
   }
 
   if (loading) return (
@@ -99,12 +86,6 @@ export default function SettingsPage() {
           </button>
         </div>
 
-        <button
-          onClick={handleSignOut}
-          style={{ color: '#dc2626', background: 'none', border: 'none', fontSize: '14px', cursor: 'pointer', padding: 0 }}
-        >
-          Sign out
-        </button>
       </div>
     </div>
   )

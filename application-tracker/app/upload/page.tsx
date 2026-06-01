@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
@@ -11,17 +11,6 @@ export default function UploadPage() {
   const [loading, setLoading] = useState(false)
   const [extracted, setExtracted] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
-  const [userId, setUserId] = useState<string | null>(null)
-  const checkAuth = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/login'); return }
-    setUserId(user.id)
-  }
-  useEffect(() => {
-    checkAuth()
-  }, [])
-
-  
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
@@ -32,13 +21,12 @@ export default function UploadPage() {
   }
 
   const handleExtract = async () => {
-    if (!file || !userId) return
+    if (!file) return
     setLoading(true)
     setError(null)
     try {
       const formData = new FormData()
       formData.append('screenshot', file)
-      formData.append('userId', userId)
 
       const res = await fetch('/api/extract', {
         method: 'POST',
@@ -56,13 +44,12 @@ export default function UploadPage() {
   }
 
   const handleSave = async () => {
-    if (!extracted || !userId) return
+    if (!extracted) return
     setLoading(true)
     try {
       const { error } = await supabase.from('jobs').insert([{
         ...extracted,
         status: 'applied',
-        user_id: userId
       }])
       if (error) throw error
       router.push('/dashboard')
