@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import { SignOutButton, UserButton } from '@clerk/nextjs'
 
 const STATUS_STYLES: Record<string, { background: string; color: string; label: string }> = {
   applied:   { background: '#dbeafe', color: '#1d4ed8', label: 'Applied' },
@@ -13,17 +13,22 @@ const STATUS_STYLES: Record<string, { background: string; color: string; label: 
 }
 
 export default function Dashboard() {
+  const router = useRouter()
   const [jobs, setJobs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchJobs()
+    checkAuthAndFetch()
   }, [])
 
-  const fetchJobs = async () => {
+  const checkAuthAndFetch = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { router.push('/login'); return }
+
     const { data, error } = await supabase
       .from('jobs')
       .select('*')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
     if (!error && data) setJobs(data)
     setLoading(false)
@@ -67,7 +72,6 @@ export default function Dashboard() {
             }}>
               + Add application
             </Link>
-            <UserButton />
             <Link href="/settings" style={{ fontSize: '14px', color: '#6b7280', textDecoration: 'none' }}>
               Settings
             </Link>
