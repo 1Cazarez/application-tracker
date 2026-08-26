@@ -35,7 +35,7 @@ Styling is inline `style={{}}` objects — no CSS framework.
 | `/forgot-password` | Sends a Supabase reset email |
 | `/reset-password` | Sets a new password from the emailed link |
 | `POST /api/extract` | Screenshot → Gemini → JSON job fields |
-| `GET /api/reminders` | Cron target; sends the deadline digest |
+| `GET /api/reminders` | Cron target; sends the deadline digest. Requires the `CRON_SECRET` bearer token |
 
 ## Database
 
@@ -69,7 +69,10 @@ SUPABASE_SERVICE_ROLE_KEY=         # server-only, used by the reminders cron
 RESEND_API_KEY=                    # https://resend.com
 REMINDER_EMAIL=                    # optional fallback for jobs with no owner
 NEXT_PUBLIC_APP_URL=               # e.g. https://your-app.vercel.app, for email links
+CRON_SECRET=                       # long random string; gates /api/reminders
 ```
+
+`CRON_SECRET` is required — `/api/reminders` refuses to run without it, since the route would otherwise be a public URL anyone could use to fire everyone's reminder emails. Vercel sends it automatically as a bearer token on scheduled invocations once it's set on the project. Generate one with `openssl rand -hex 32`.
 
 There's deliberately no `GEMINI_API_KEY` here. Extractions bill to whichever key makes them, so each user supplies their own on `/settings` and spends their own free-tier quota. A user without a key can still add applications by typing them in.
 
@@ -97,6 +100,5 @@ The cron schedule lives in [`vercel.json`](vercel.json). Cron jobs only run on p
 
 ## Known gaps
 
-- **`/api/reminders` is unauthenticated.** Anyone who knows the URL can trigger a send. Vercel can pass a `CRON_SECRET` bearer token the route checks for; that isn't wired up yet.
 - **No pagination on the dashboard.** Every job is fetched in one query, which is fine at a few hundred rows and not beyond.
 - **Extraction trusts the model's JSON.** If Gemini returns something unparseable the request fails with a generic 500 rather than a useful message.

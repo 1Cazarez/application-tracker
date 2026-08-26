@@ -1,8 +1,21 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { timingSafeEqual } from 'node:crypto'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
+
+/**
+ * Vercel sends `Authorization: Bearer $CRON_SECRET` on scheduled invocations
+ * when CRON_SECRET is set on the project. Without this the route is a public
+ * URL anyone can use to fire everyone's reminder emails.
+ */
+function isAuthorizedCron(req: NextRequest, secret: string) {
+  const header = req.headers.get('authorization') ?? ''
+  const expected = Buffer.from(`Bearer ${secret}`)
+  const received = Buffer.from(header)
+  return expected.length === received.length && timingSafeEqual(expected, received)
+}
 
 type Job = {
   id: string
@@ -45,7 +58,18 @@ function buildEmail(jobs: Job[]) {
       `
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  // Fail closed: an unset secret means the route would otherwise be open.
+  const cronSecret = process.env.CRON_SECRET
+  if (!cronSecret) {
+    console.error('CRON_SECRET is not set; refusing to run reminders.')
+    return NextResponse.json({ error: 'Reminders are not configured' }, { status: 500 })
+  }
+
+  if (!isAuthorizedCron(req, cronSecret)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const today = new Date()
     const in7Days = new Date()
