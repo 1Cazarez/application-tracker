@@ -1,5 +1,7 @@
 -- Reports whether every object the migrations create is present.
 -- Safe to run any time; reads only. Every row should say ok = true.
+-- Deliberately one statement: the Supabase SQL editor only renders the
+-- result of the last one.
 
 with checks as (
   -- 0001: ownership column
@@ -73,10 +75,12 @@ with checks as (
   union all select 16, 'user_settings.gemini_api_key exists',
     exists (select 1 from information_schema.columns
       where table_schema = 'public' and table_name = 'user_settings' and column_name = 'gemini_api_key')
-)
-select check_name, ok from checks order by seq;
 
--- Rows that RLS now hides from everyone. Both should be 0.
-select
-  (select count(*) from jobs where user_id is null) as orphan_jobs,
-  (select count(*) from user_settings where user_id is null) as orphan_settings;
+  -- Rows that RLS would hide from everyone
+  union all select 17, 'no orphan jobs (user_id is null)',
+    not exists (select 1 from jobs where user_id is null)
+
+  union all select 18, 'no orphan user_settings (user_id is null)',
+    not exists (select 1 from user_settings where user_id is null)
+)
+select seq, check_name, ok from checks order by seq;
