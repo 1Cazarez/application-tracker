@@ -9,7 +9,7 @@ Track job applications without typing them in. Screenshot a job listing, upload 
 3. **Confirm** — Every extracted field renders as an editable input, so you fix whatever the model got wrong before committing it.
 4. **Save** — The row lands in the Supabase `jobs` table with status `applied`.
 5. **Track** — `/dashboard` lists your applications with counts per status, and flags any deadline within 3 days in red. Status is a dropdown on each card: applied → interview → offer → rejected.
-6. **Remind** — A Vercel cron hits `/api/reminders` daily at 13:00 UTC. It finds non-rejected jobs with a deadline in the next 7 days that haven't been mailed yet, sends one digest email via Resend, and marks them `reminder_sent`.
+6. **Remind** — A Vercel cron hits `/api/reminders` daily at 13:00 UTC. For each user who has reminders on, it finds their non-rejected jobs falling inside their chosen lead time that haven't been mailed yet, sends one digest via Resend in their language, and marks them `reminder_sent`.
 
 ## Stack
 
@@ -23,6 +23,12 @@ Track job applications without typing them in. Screenshot a job listing, upload 
 
 Styling is inline `style={{}}` objects — no CSS framework.
 
+## Languages
+
+The UI ships in English and Spanish. There's no i18n library: [`lib/i18n.ts`](lib/i18n.ts) holds both dictionaries and [`lib/language.tsx`](lib/language.tsx) exposes them through a context provider as `t('some.key')`. The Spanish dictionary is typed as `Record<TranslationKey, string>`, so a key added to English that's missing from Spanish fails the build rather than silently falling back.
+
+A user's choice is saved to `user_settings.language` and mirrored into `localStorage` — the stored copy is what the signed-out pages read, and the account's value wins once they sign in. Reminder emails are rendered in the same language. Adding a third language means adding a code to `LANGUAGES` and a dictionary; the compiler will list what's missing.
+
 ## Routes
 
 | Route | Purpose |
@@ -30,7 +36,7 @@ Styling is inline `style={{}}` objects — no CSS framework.
 | `/` | Redirects to `/dashboard` |
 | `/dashboard` | Application list, status counts, deadline warnings |
 | `/upload` | Screenshot upload and extraction, or manual entry; confirm-and-save |
-| `/settings` | Stores this user's Gemini API key in `user_settings` |
+| `/settings` | Gemini key, reminder preferences, default status, language, account |
 | `/login` | Email/password sign in and sign up, plus Google OAuth |
 | `/forgot-password` | Sends a Supabase reset email |
 | `/reset-password` | Sets a new password from the emailed link |
@@ -54,11 +60,19 @@ Two tables in Supabase.
 | `reminder_sent` | boolean, so a job is only mailed about once |
 | `created_at` | timestamp, dashboard sorts by this descending |
 
-**`user_settings`** — `user_id` (unique) and that user's `gemini_api_key`.
+**`user_settings`** — one row per user, keyed by a unique `user_id`.
+
+| Column | Notes |
+| --- | --- |
+| `gemini_api_key` | That user's own key; extraction is disabled without one |
+| `reminders_enabled` | Whether to send deadline emails at all |
+| `reminder_days` | Lead time in days, 1–30 |
+| `default_status` | Status a newly added application starts in |
+| `language` | `en` or `es`; applies to the app and reminder emails |
 
 Row-level security is on for both tables, scoped to `auth.uid() = user_id`. The reminder cron deliberately uses the service-role key so it can read across users.
 
-The schema changes that add ownership live in [`supabase/migrations/0001_per_user_ownership.sql`](supabase/migrations/0001_per_user_ownership.sql). There's no migration runner wired up — paste it into the Supabase SQL editor and run it once.
+Migrations live in [`supabase/migrations/`](supabase/migrations/) and there's no runner wired up — paste each into the Supabase SQL editor and run it once, in order.
 
 ## Environment variables
 
