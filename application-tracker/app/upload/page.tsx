@@ -4,6 +4,16 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
+const EMPTY_JOB = {
+  company: '',
+  title: '',
+  deadline: '',
+  pay: '',
+  location: '',
+  url: '',
+  job_type: '',
+}
+
 export default function UploadPage() {
   const router = useRouter()
   const [userId, setUserId] = useState<string | null>(null)
@@ -12,7 +22,9 @@ export default function UploadPage() {
   const [preview, setPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [extracted, setExtracted] = useState<any>(null)
+  const [manual, setManual] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [needsKey, setNeedsKey] = useState(false)
 
   const checkAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -31,12 +43,21 @@ export default function UploadPage() {
     setFile(f)
     setPreview(URL.createObjectURL(f))
     setExtracted(null)
+    setManual(false)
+  }
+
+  const startManualEntry = () => {
+    setExtracted({ ...EMPTY_JOB })
+    setManual(true)
+    setError(null)
+    setNeedsKey(false)
   }
 
   const handleExtract = async () => {
     if (!file) return
     setLoading(true)
     setError(null)
+    setNeedsKey(false)
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { router.push('/login'); return }
@@ -51,8 +72,12 @@ export default function UploadPage() {
       })
 
       const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      if (data.error) {
+        if (data.needsKey) setNeedsKey(true)
+        throw new Error(data.error)
+      }
       setExtracted(data)
+      setManual(false)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -62,10 +87,23 @@ export default function UploadPage() {
 
   const handleSave = async () => {
     if (!extracted || !userId) return
+    if (!extracted.company?.trim() || !extracted.title?.trim()) {
+      setError('Company and title are required.')
+      return
+    }
     setLoading(true)
+    setError(null)
     try {
+      // Blank fields must go in as null, not '' — deadline is a date column
+      // and Postgres rejects the empty string.
+      const fields = Object.fromEntries(
+        Object.entries(extracted).map(([key, value]) =>
+          [key, typeof value === 'string' && value.trim() === '' ? null : value]
+        )
+      )
+
       const { error } = await supabase.from('jobs').insert([{
-        ...extracted,
+        ...fields,
         status: 'applied',
         user_id: userId,
       }])
@@ -89,31 +127,47 @@ export default function UploadPage() {
       <main style={{ maxWidth: '600px', margin: '0 auto', padding: '40px 24px' }}>
         <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '24px' }}>Add a job application</h1>
 
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleFile}
-          style={{ marginBottom: '16px', display: 'block' }}
-        />
+        {!manual && (
+          <>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFile}
+              style={{ marginBottom: '16px', display: 'block' }}
+            />
 
-        {preview && (
-          <img src={preview} alt="Screenshot preview" style={{ width: '100%', borderRadius: '8px', marginBottom: '16px' }} />
+            {preview && (
+              <img src={preview} alt="Screenshot preview" style={{ width: '100%', borderRadius: '8px', marginBottom: '16px' }} />
+            )}
+
+            {file && !extracted && (
+              <button
+                onClick={handleExtract}
+                disabled={loading}
+                style={{ width: '100%', padding: '10px', background: '#111827', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', marginBottom: '16px', opacity: loading ? 0.5 : 1, fontSize: '14px', fontWeight: '600' }}
+              >
+                {loading ? 'Extracting...' : 'Extract job details'}
+              </button>
+            )}
+          </>
         )}
 
-        {file && !extracted && (
-          <button
-            onClick={handleExtract}
-            disabled={loading}
-            style={{ width: '100%', padding: '10px', background: '#111827', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', marginBottom: '16px', opacity: loading ? 0.5 : 1, fontSize: '14px', fontWeight: '600' }}
-          >
-            {loading ? 'Extracting...' : 'Extract job details'}
-          </button>
+        {!extracted && (
+          <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '16px' }}>
+            No screenshot?{' '}
+            <button
+              onClick={startManualEntry}
+              style={{ color: '#111827', fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', padding: 0, textDecoration: 'underline' }}
+            >
+              Enter the details yourself
+            </button>
+          </p>
         )}
 
         {error && (
           <div style={{ background: '#fee2e2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px', marginBottom: '16px' }}>
             <p style={{ color: '#dc2626', fontSize: '13px', margin: 0 }}>{error}</p>
-            {error.includes('API key') && (
+            {needsKey && (
               <a href="/settings" style={{ color: '#dc2626', fontSize: '13px', fontWeight: '600' }}>Go to Settings →</a>
             )}
           </div>
@@ -121,11 +175,14 @@ export default function UploadPage() {
 
         {extracted && (
           <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
-            <h2 style={{ fontWeight: '600', marginBottom: '16px', color: '#111827' }}>Confirm details</h2>
+            <h2 style={{ fontWeight: '600', marginBottom: '16px', color: '#111827' }}>
+              {manual ? 'Job details' : 'Confirm details'}
+            </h2>
             {Object.entries(extracted).map(([key, value]) => (
               <div key={key} style={{ marginBottom: '12px' }}>
                 <label style={{ fontSize: '12px', color: '#6b7280', textTransform: 'capitalize', display: 'block', marginBottom: '4px' }}>{key.replace('_', ' ')}</label>
                 <input
+                  type={key === 'deadline' ? 'date' : 'text'}
                   style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '6px', padding: '8px 10px', fontSize: '14px', boxSizing: 'border-box' }}
                   value={value as string}
                   onChange={(e) => setExtracted({ ...extracted, [key]: e.target.value })}
@@ -139,6 +196,14 @@ export default function UploadPage() {
             >
               {loading ? 'Saving...' : 'Save to tracker'}
             </button>
+            {manual && (
+              <button
+                onClick={() => { setExtracted(null); setManual(false); setError(null) }}
+                style={{ display: 'block', margin: '12px auto 0', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px' }}
+              >
+                Use a screenshot instead
+              </button>
+            )}
           </div>
         )}
       </main>

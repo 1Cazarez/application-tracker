@@ -4,7 +4,7 @@ Track job applications without typing them in. Screenshot a job listing, upload 
 
 ## How it works
 
-1. **Upload** — On `/upload` you pick a screenshot of a job posting.
+1. **Upload** — On `/upload` you pick a screenshot of a job posting. (Or skip straight to step 3 and type the details in by hand.)
 2. **Extract** — The image is POSTed to `/api/extract`, which sends it to Gemini 2.5 Flash with a prompt asking for a strict JSON object (company, title, deadline, pay, location, url, job_type).
 3. **Confirm** — Every extracted field renders as an editable input, so you fix whatever the model got wrong before committing it.
 4. **Save** — The row lands in the Supabase `jobs` table with status `applied`.
@@ -29,8 +29,8 @@ Styling is inline `style={{}}` objects — no CSS framework.
 | --- | --- |
 | `/` | Redirects to `/dashboard` |
 | `/dashboard` | Application list, status counts, deadline warnings |
-| `/upload` | Screenshot upload, extraction, confirm-and-save |
-| `/settings` | Stores a Gemini API key in `user_settings` |
+| `/upload` | Screenshot upload and extraction, or manual entry; confirm-and-save |
+| `/settings` | Stores this user's Gemini API key in `user_settings` |
 | `/login` | Email/password sign in and sign up, plus Google OAuth |
 | `/forgot-password` | Sends a Supabase reset email |
 | `/reset-password` | Sets a new password from the emailed link |
@@ -66,13 +66,14 @@ The schema changes that add ownership live in [`supabase/migrations/0001_per_use
 NEXT_PUBLIC_SUPABASE_URL=          # Supabase project URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY=     # public anon key, used by the browser client
 SUPABASE_SERVICE_ROLE_KEY=         # server-only, used by the reminders cron
-GEMINI_API_KEY=                    # optional fallback when a user hasn't saved their own
 RESEND_API_KEY=                    # https://resend.com
 REMINDER_EMAIL=                    # optional fallback for jobs with no owner
 NEXT_PUBLIC_APP_URL=               # e.g. https://your-app.vercel.app, for email links
 ```
 
-`GEMINI_API_KEY` and `REMINDER_EMAIL` are both fallbacks. Normally each user saves their own Gemini key on `/settings`, and reminders go to the email on their Supabase account.
+There's deliberately no `GEMINI_API_KEY` here. Extractions bill to whichever key makes them, so each user supplies their own on `/settings` and spends their own free-tier quota. A user without a key can still add applications by typing them in.
+
+`REMINDER_EMAIL` is only a fallback for legacy rows with no owner; normally reminders go to the email on each user's Supabase account.
 
 ## Running locally
 

@@ -28,9 +28,14 @@ export async function POST(req: NextRequest) {
       .eq('user_id', user.id)
       .maybeSingle()
 
-    const geminiKey = settings?.gemini_api_key || process.env.GEMINI_API_KEY
+    // Deliberately no environment fallback: extractions bill to the key that
+    // makes them, so each user brings their own.
+    const geminiKey = settings?.gemini_api_key
     if (!geminiKey) {
-      return NextResponse.json({ error: 'No Gemini API key configured. Add one in Settings.' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Add your own Gemini API key in Settings to extract from screenshots.', needsKey: true },
+        { status: 400 }
+      )
     }
 
     const genAI = new GoogleGenerativeAI(geminiKey)

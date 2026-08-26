@@ -74,7 +74,8 @@ export default function SettingsPage() {
           <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '16px' }}>
             Get your free key at{' '}
             <a href="https://aistudio.google.com" target="_blank" style={{ color: '#3b82f6' }}>aistudio.google.com</a>
-            . Used to extract job details from screenshots.
+            . Used to extract job details from screenshots, and billed to your own
+            free-tier quota. Without one you can still add applications manually.
           </p>
           <input
             type="password"
