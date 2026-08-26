@@ -1,16 +1,29 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 export default function UploadPage() {
   const router = useRouter()
+  const [userId, setUserId] = useState<string | null>(null)
+  const [checkingAuth, setCheckingAuth] = useState(true)
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [extracted, setExtracted] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const checkAuth = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { router.push('/login'); return }
+    setUserId(user.id)
+    setCheckingAuth(false)
+  }
+
+  useEffect(() => {
+    checkAuth()
+  }, [])
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
@@ -25,11 +38,15 @@ export default function UploadPage() {
     setLoading(true)
     setError(null)
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { router.push('/login'); return }
+
       const formData = new FormData()
       formData.append('screenshot', file)
 
       const res = await fetch('/api/extract', {
         method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
         body: formData
       })
 
@@ -44,12 +61,13 @@ export default function UploadPage() {
   }
 
   const handleSave = async () => {
-    if (!extracted) return
+    if (!extracted || !userId) return
     setLoading(true)
     try {
       const { error } = await supabase.from('jobs').insert([{
         ...extracted,
         status: 'applied',
+        user_id: userId,
       }])
       if (error) throw error
       router.push('/dashboard')
@@ -59,6 +77,12 @@ export default function UploadPage() {
       setLoading(false)
     }
   }
+
+  if (checkingAuth) return (
+    <div style={{ minHeight: '100vh', background: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ color: '#6b7280' }}>Loading...</p>
+    </div>
+  )
 
   return (
     <div style={{ minHeight: '100vh', background: '#f9fafb' }}>

@@ -54,9 +54,11 @@ Two tables in Supabase.
 | `reminder_sent` | boolean, so a job is only mailed about once |
 | `created_at` | timestamp, dashboard sorts by this descending |
 
-**`user_settings`** — holds `gemini_api_key`.
+**`user_settings`** — `user_id` (unique) and that user's `gemini_api_key`.
 
-Enable row-level security on `jobs` and scope policies to `auth.uid() = user_id`; the reminder route deliberately uses the service-role key to read across users.
+Row-level security is on for both tables, scoped to `auth.uid() = user_id`. The reminder cron deliberately uses the service-role key so it can read across users.
+
+The schema changes that add ownership live in [`supabase/migrations/0001_per_user_ownership.sql`](supabase/migrations/0001_per_user_ownership.sql). There's no migration runner wired up — paste it into the Supabase SQL editor and run it once.
 
 ## Environment variables
 
@@ -64,11 +66,13 @@ Enable row-level security on `jobs` and scope policies to `auth.uid() = user_id`
 NEXT_PUBLIC_SUPABASE_URL=          # Supabase project URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY=     # public anon key, used by the browser client
 SUPABASE_SERVICE_ROLE_KEY=         # server-only, used by the reminders cron
-GEMINI_API_KEY=                    # https://aistudio.google.com
+GEMINI_API_KEY=                    # optional fallback when a user hasn't saved their own
 RESEND_API_KEY=                    # https://resend.com
-REMINDER_EMAIL=                    # where deadline digests are sent
+REMINDER_EMAIL=                    # optional fallback for jobs with no owner
 NEXT_PUBLIC_APP_URL=               # e.g. https://your-app.vercel.app, for email links
 ```
+
+`GEMINI_API_KEY` and `REMINDER_EMAIL` are both fallbacks. Normally each user saves their own Gemini key on `/settings`, and reminders go to the email on their Supabase account.
 
 ## Running locally
 
@@ -77,6 +81,8 @@ npm install
 # create .env.local and fill in the variables listed above
 npm run dev
 ```
+
+Run the SQL in [`supabase/migrations/`](supabase/migrations/) against your Supabase project first, or the dashboard will come up empty.
 
 Open [http://localhost:3000](http://localhost:3000). You'll be redirected to `/login` on first visit.
 
@@ -90,7 +96,6 @@ The cron schedule lives in [`vercel.json`](vercel.json). Cron jobs only run on p
 
 ## Known gaps
 
-- **The Settings page's Gemini key isn't used.** `/settings` saves a key into `user_settings`, but `/api/extract` reads `process.env.GEMINI_API_KEY`. Right now the environment variable is the only one that matters.
-- **`/upload` has no auth guard.** `/dashboard` redirects signed-out visitors to `/login`; `/upload` doesn't.
-- **Saved jobs don't set `user_id`.** The insert in `/upload` omits it while the dashboard filters on it, so rows need a `default auth.uid()` on the column to show up.
-- **Reminders go to one address.** `REMINDER_EMAIL` is a single global recipient rather than each job's owner.
+- **`/api/reminders` is unauthenticated.** Anyone who knows the URL can trigger a send. Vercel can pass a `CRON_SECRET` bearer token the route checks for; that isn't wired up yet.
+- **No pagination on the dashboard.** Every job is fetched in one query, which is fine at a few hundred rows and not beyond.
+- **Extraction trusts the model's JSON.** If Gemini returns something unparseable the request fails with a generic 500 rather than a useful message.

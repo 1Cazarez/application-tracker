@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { createUserClient, getAccessToken } from '@/lib/supabase-server'
 
 export async function POST(req: NextRequest) {
   try {
+    const accessToken = getAccessToken(req)
+    if (!accessToken) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
+    }
+
+    const supabase = createUserClient(accessToken)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
+    }
+
     const formData = await req.formData()
     const file = formData.get('screenshot') as File
 
@@ -10,9 +22,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 })
     }
 
-    const geminiKey = process.env.GEMINI_API_KEY
+    const { data: settings } = await supabase
+      .from('user_settings')
+      .select('gemini_api_key')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    const geminiKey = settings?.gemini_api_key || process.env.GEMINI_API_KEY
     if (!geminiKey) {
-      return NextResponse.json({ error: 'No Gemini API key configured. Set GEMINI_API_KEY in your environment.' }, { status: 400 })
+      return NextResponse.json({ error: 'No Gemini API key configured. Add one in Settings.' }, { status: 400 })
     }
 
     const genAI = new GoogleGenerativeAI(geminiKey)

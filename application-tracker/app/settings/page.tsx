@@ -1,39 +1,47 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 
 export default function SettingsPage() {
+  const router = useRouter()
+  const [userId, setUserId] = useState<string | null>(null)
   const [geminiKey, setGeminiKey] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadSettings()
-  }, [])
-
   const loadSettings = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { router.push('/login'); return }
+    setUserId(user.id)
+
     const { data } = await supabase
       .from('user_settings')
       .select('gemini_api_key')
-      .limit(1)
+      .eq('user_id', user.id)
       .maybeSingle()
 
     if (data?.gemini_api_key) setGeminiKey(data.gemini_api_key)
     setLoading(false)
   }
 
+  useEffect(() => {
+    loadSettings()
+  }, [])
+
   const handleSave = async () => {
+    if (!userId) return
     setSaving(true)
     setError(null)
     setMessage(null)
     try {
       const { error } = await supabase
         .from('user_settings')
-        .upsert({ gemini_api_key: geminiKey })
+        .upsert({ user_id: userId, gemini_api_key: geminiKey }, { onConflict: 'user_id' })
 
       if (error) throw error
       setMessage('Saved successfully!')
