@@ -112,7 +112,7 @@ Push to `main` and Vercel builds it. Set every variable above in the Vercel proj
 
 The cron schedule lives in [`vercel.json`](vercel.json). Cron jobs only run on production deployments, not previews.
 
-## Known gaps
+## Road Map
 
 - **No pagination on the dashboard.** Every job is fetched in one query, which is fine at a few hundred rows and not beyond.
 - **Extraction trusts the model's JSON.** If Gemini returns something unparseable the request fails with a generic 500 rather than a useful message.
