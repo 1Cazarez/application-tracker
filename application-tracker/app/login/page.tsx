@@ -3,9 +3,11 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useLanguage } from '@/lib/language'
 
 export default function LoginPage() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -19,12 +21,12 @@ export default function LoginPage() {
     setMessage(null)
 
     if (isSignUp && password !== confirmPassword) {
-      setError('Passwords do not match')
+      setError(t('login.passwordsDoNotMatch'))
       return
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters')
+      setError(t('login.passwordTooShort'))
       return
     }
 
@@ -33,7 +35,7 @@ export default function LoginPage() {
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
-        setMessage('Check your email to confirm your account!')
+        setMessage(t('login.checkEmail'))
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
@@ -75,10 +77,10 @@ export default function LoginPage() {
     <div style={{ minHeight: '100vh', background: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '40px', width: '100%', maxWidth: '400px' }}>
         <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '8px' }}>
-          {isSignUp ? 'Create account' : 'Welcome back'}
+          {isSignUp ? t('login.createAccount') : t('login.welcomeBack')}
         </h1>
         <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '24px' }}>
-          {isSignUp ? 'Start tracking your applications' : 'Sign in to your tracker'}
+          {isSignUp ? t('login.subtitleSignUp') : t('login.subtitleSignIn')}
         </p>
 
         {/* Google button */}
@@ -107,17 +109,17 @@ export default function LoginPage() {
             <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
             <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
           </svg>
-          Continue with Google
+          {t('login.continueWithGoogle')}
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
           <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
-          <span style={{ fontSize: '13px', color: '#9ca3af' }}>or</span>
+          <span style={{ fontSize: '13px', color: '#9ca3af' }}>{t('login.or')}</span>
           <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
         </div>
 
         <div style={{ marginBottom: '16px' }}>
-          <label style={labelStyle}>Email</label>
+          <label style={labelStyle}>{t('common.email')}</label>
           <input
             type="email"
             value={email}
@@ -128,7 +130,7 @@ export default function LoginPage() {
         </div>
 
         <div style={{ marginBottom: '16px' }}>
-          <label style={labelStyle}>Password</label>
+          <label style={labelStyle}>{t('common.password')}</label>
           <input
             type="password"
             value={password}
@@ -140,7 +142,7 @@ export default function LoginPage() {
 
         {isSignUp && (
           <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>Confirm password</label>
+            <label style={labelStyle}>{t('login.confirmPassword')}</label>
             <input
               type="password"
               value={confirmPassword}
@@ -152,7 +154,7 @@ export default function LoginPage() {
               }}
             />
             {confirmPassword && password !== confirmPassword && (
-              <p style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px' }}>Passwords do not match</p>
+              <p style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px' }}>{t('login.passwordsDoNotMatch')}</p>
             )}
           </div>
         )}
@@ -165,16 +167,24 @@ export default function LoginPage() {
           disabled={loading}
           style={{ width: '100%', background: '#111827', color: '#fff', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', opacity: loading ? 0.5 : 1 }}
         >
-          {loading ? 'Loading...' : isSignUp ? 'Create account' : 'Sign in'}
+          {loading ? t('common.loading') : isSignUp ? t('login.createAccount') : t('login.signIn')}
         </button>
 
+        {!isSignUp && (
+          <p style={{ textAlign: 'center', fontSize: '13px', marginTop: '16px' }}>
+            <a href="/forgot-password" style={{ color: '#6b7280', textDecoration: 'none' }}>
+              {t('login.forgotPassword')}
+            </a>
+          </p>
+        )}
+
         <p style={{ textAlign: 'center', fontSize: '13px', color: '#6b7280', marginTop: '16px' }}>
-          {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+          {isSignUp ? t('login.haveAccount') : t('login.noAccount')}{' '}
           <button
             onClick={() => { setIsSignUp(!isSignUp); setError(null); setConfirmPassword('') }}
             style={{ color: '#111827', fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px' }}
           >
-            {isSignUp ? 'Sign in' : 'Sign up'}
+            {isSignUp ? t('login.signIn') : t('login.signUp')}
           </button>
         </p>
       </div>
