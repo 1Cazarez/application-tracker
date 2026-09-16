@@ -6,6 +6,11 @@ import { supabase } from '@/lib/supabase'
 import { useLanguage } from '@/lib/language'
 import { isLanguage } from '@/lib/i18n'
 import Link from 'next/link'
+import { AppHeader } from '@/components/AppHeader'
+import {
+  PlusIcon, SettingsIcon, LogOutIcon, DollarSignIcon, MapPinIcon, BriefcaseIcon,
+  CalendarIcon, AlertTriangleIcon, ExternalLinkIcon, Trash2Icon,
+} from '@/lib/icons'
 
 const STATUSES = ['applied', 'interview', 'offer', 'rejected'] as const
 type Status = (typeof STATUSES)[number]
@@ -71,57 +76,65 @@ export default function Dashboard() {
   }
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: '#6b7280' }}>{t('common.loading')}</p>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>{t('common.loading')}</p>
     </div>
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f9fafb' }}>
-      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '40px 24px' }}>
-
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-          <div>
-            <h1 style={{ fontSize: '28px', fontWeight: '700', color: '#111827', margin: 0 }}>{t('dashboard.title')}</h1>
-            <p style={{ color: '#6b7280', fontSize: '14px', marginTop: '4px' }}>{t('dashboard.total', { count: jobs.length })}</p>
-          </div>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <Link href="/upload" style={{
-              background: '#111827', color: '#fff', padding: '10px 20px',
-              borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '500'
-            }}>
-              {t('dashboard.add')}
-            </Link>
-            <Link href="/settings" style={{ fontSize: '14px', color: '#6b7280', textDecoration: 'none' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+      <AppHeader
+        right={
+          <>
+            <Link href="/settings" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', color: 'var(--text-secondary)' }}>
+              <SettingsIcon size={15} />
               {t('dashboard.settings')}
             </Link>
             <button
               onClick={handleSignOut}
-              style={{ fontSize: '14px', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
             >
+              <LogOutIcon size={15} />
               {t('dashboard.signOut')}
             </button>
-          </div>
+            <Link href="/upload" className="btn btn-primary btn-sm">
+              <PlusIcon size={14} strokeWidth={2.5} />
+              {t('dashboard.add').replace('+ ', '')}
+            </Link>
+          </>
+        }
+      />
+
+      <div style={{ maxWidth: '880px', margin: '0 auto', padding: '40px 24px 80px' }}>
+
+        <div style={{ marginBottom: '28px' }}>
+          <h1 style={{ fontSize: '28px', fontWeight: '800', letterSpacing: '-0.02em', color: 'var(--text-primary)', margin: 0 }}>{t('dashboard.title')}</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '6px' }}>{t('dashboard.total', { count: jobs.length })}</p>
         </div>
 
         {/* Stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '32px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '28px' }}>
           {STATUSES.map(status => (
-            <div key={status} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
-              <p style={{ fontSize: '24px', fontWeight: '700', color: STATUS_STYLES[status].color, margin: 0 }}>
+            <div key={status} className="card" style={{ padding: '18px', textAlign: 'center' }}>
+              <p style={{ fontSize: '26px', fontWeight: '800', color: STATUS_STYLES[status].color, margin: 0, letterSpacing: '-0.02em' }}>
                 {jobs.filter(j => j.status === status).length}
               </p>
-              <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>{t(`status.${status}`)}</p>
+              <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', fontWeight: 500 }}>{t(`status.${status}`)}</p>
             </div>
           ))}
         </div>
 
         {/* Job cards */}
         {jobs.length === 0 ? (
-          <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '48px', textAlign: 'center' }}>
-            <p style={{ color: '#6b7280', fontSize: '16px' }}>{t('dashboard.empty')}</p>
-            <Link href="/upload" style={{ color: '#111827', fontWeight: '600', fontSize: '14px' }}>{t('dashboard.addFirst')}</Link>
+          <div className="card" style={{ padding: '56px 32px', textAlign: 'center' }}>
+            <div style={{
+              width: '48px', height: '48px', borderRadius: '12px', background: 'var(--accent-soft)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: 'var(--accent)',
+            }}>
+              <BriefcaseIcon size={22} />
+            </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '15px', marginBottom: '12px' }}>{t('dashboard.empty')}</p>
+            <Link href="/upload" className="link-accent" style={{ fontSize: '14px' }}>{t('dashboard.addFirst')}</Link>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -130,27 +143,41 @@ export default function Dashboard() {
               const status = STATUS_STYLES[job.status as Status] ?? STATUS_STYLES.applied
               const urgent = days !== null && days <= 3
               return (
-                <div key={job.id} style={{
-                  background: '#fff', border: '1px solid #e5e7eb',
-                  borderRadius: '12px', padding: '20px',
-                  borderLeft: `4px solid ${status.color}`
+                <div key={job.id} className="card card-interactive" style={{
+                  padding: '20px', borderLeft: `4px solid ${status.color}`,
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ flex: 1 }}>
-                      <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: '0 0 4px' }}>{job.title}</h2>
-                      <p style={{ fontSize: '14px', color: '#374151', margin: '0 0 8px', fontWeight: '500' }}>{job.company}</p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 240px' }}>
+                      <h2 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)', margin: '0 0 4px' }}>{job.title}</h2>
+                      <p style={{ fontSize: '14px', color: '#374151', margin: '0 0 10px', fontWeight: '500' }}>{job.company}</p>
                       <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                        {job.pay && <span style={{ fontSize: '13px', color: '#6b7280' }}>💰 {job.pay}</span>}
-                        {job.location && <span style={{ fontSize: '13px', color: '#6b7280' }}>📍 {job.location}</span>}
-                        {job.job_type && <span style={{ fontSize: '13px', color: '#6b7280' }}>💼 {job.job_type}</span>}
+                        {job.pay && (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                            <DollarSignIcon size={13} /> {job.pay}
+                          </span>
+                        )}
+                        {job.location && (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                            <MapPinIcon size={13} /> {job.location}
+                          </span>
+                        )}
+                        {job.job_type && (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                            <BriefcaseIcon size={13} /> {job.job_type}
+                          </span>
+                        )}
                         {job.deadline && (
-                          <span style={{ fontSize: '13px', color: urgent ? '#dc2626' : '#6b7280', fontWeight: urgent ? '600' : '400' }}>
-                            {urgent ? '⚠️' : '📅'} {job.deadline} {t('dashboard.daysLeft', { count: days ?? 0 })}
+                          <span style={{
+                            display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px',
+                            color: urgent ? 'var(--danger)' : 'var(--text-secondary)', fontWeight: urgent ? '600' : '400',
+                          }}>
+                            {urgent ? <AlertTriangleIcon size={13} /> : <CalendarIcon size={13} />}
+                            {job.deadline} {t('dashboard.daysLeft', { count: days ?? 0 })}
                           </span>
                         )}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', marginLeft: '16px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
                       <select
                         value={job.status}
                         onChange={(e) => updateStatus(job.id, e.target.value)}
@@ -165,19 +192,19 @@ export default function Dashboard() {
                         ))}
                       </select>
                       {job.url && (
-                        <a href={job.url} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: '#3b82f6', textDecoration: 'none' }}>
-                          {t('dashboard.viewListing')}
+                        <a href={job.url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--info)' }}>
+                          {t('dashboard.viewListing').replace(' ↗', '')} <ExternalLinkIcon size={11} />
                         </a>
                       )}
                       <button
                         onClick={() => deleteJob(job.id)}
-                        style={{ fontSize: '12px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                       >
-                        {t('dashboard.delete')}
+                        <Trash2Icon size={11} /> {t('dashboard.delete')}
                       </button>
                     </div>
                   </div>
-                  {job.notes && <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #f3f4f6' }}>{job.notes}</p>}
+                  {job.notes && <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border)' }}>{job.notes}</p>}
                 </div>
               )
             })}

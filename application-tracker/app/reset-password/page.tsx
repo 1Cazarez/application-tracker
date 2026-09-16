@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useLanguage } from '@/lib/language'
+import { BriefcaseIcon } from '@/lib/icons'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -52,15 +53,6 @@ export default function ResetPasswordPage() {
     }
   }
 
-  const inputStyle = {
-    width: '100%',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    padding: '10px 12px',
-    fontSize: '14px',
-    boxSizing: 'border-box' as const,
-  }
-
   const labelStyle = {
     fontSize: '13px',
     color: '#374151',
@@ -69,21 +61,33 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '40px', width: '100%', maxWidth: '400px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '8px' }}>{t('reset.title')}</h1>
-        <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '24px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
+        <span style={{
+          width: '34px', height: '34px', borderRadius: '10px', background: 'var(--text-primary)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexShrink: 0,
+        }}>
+          <BriefcaseIcon size={17} strokeWidth={2.25} />
+        </span>
+        <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+          Application Tracker
+        </span>
+      </div>
+
+      <div className="card fade-in-up" style={{ padding: '40px', width: '100%', maxWidth: '400px' }}>
+        <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px' }}>{t('reset.title')}</h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px' }}>
           {t('reset.subtitle')}
         </p>
 
         {done ? (
-          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '16px' }}>
-            <p style={{ color: '#16a34a', fontSize: '14px', margin: 0 }}>
+          <div style={{ background: 'var(--success-soft)', border: '1px solid #bbf7d0', borderRadius: 'var(--radius-sm)', padding: '16px' }}>
+            <p style={{ color: 'var(--success)', fontSize: '14px', margin: 0 }}>
               {t('reset.done')}
             </p>
           </div>
         ) : !ready ? (
-          <div style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: '8px', padding: '16px' }}>
+          <div style={{ background: 'var(--warning-soft)', border: '1px solid #fde68a', borderRadius: 'var(--radius-sm)', padding: '16px' }}>
             <p style={{ color: '#92400e', fontSize: '14px', margin: 0 }}>
               {t('reset.invalidLink')}{' '}
               <a href="/forgot-password" style={{ color: '#92400e', fontWeight: '600' }}>{t('reset.requestNew')}</a>
@@ -98,7 +102,7 @@ export default function ResetPasswordPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                style={inputStyle}
+                className="field-input"
               />
             </div>
 
@@ -109,30 +113,32 @@ export default function ResetPasswordPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
+                className="field-input"
                 style={{
-                  ...inputStyle,
-                  borderColor: confirmPassword && password !== confirmPassword ? '#dc2626' : '#d1d5db',
+                  borderColor: confirmPassword && password !== confirmPassword ? 'var(--danger)' : undefined,
                 }}
               />
               {confirmPassword && password !== confirmPassword && (
-                <p style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px' }}>{t('login.passwordsDoNotMatch')}</p>
+                <p style={{ color: 'var(--danger)', fontSize: '12px', marginTop: '4px' }}>{t('login.passwordsDoNotMatch')}</p>
               )}
             </div>
 
-            {error && <p style={{ color: '#dc2626', fontSize: '13px', marginBottom: '16px' }}>{error}</p>}
+            {error && <p style={{ color: 'var(--danger)', fontSize: '13px', marginBottom: '16px' }}>{error}</p>}
 
             <button
               onClick={handleSubmit}
               disabled={loading}
-              style={{ width: '100%', background: '#111827', color: '#fff', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', opacity: loading ? 0.5 : 1 }}
+              className="btn btn-primary"
+              style={{ width: '100%' }}
             >
+              {loading && <span className="spinner" />}
               {loading ? t('reset.updating') : t('reset.update')}
             </button>
           </>
         )}
 
-        <p style={{ textAlign: 'center', fontSize: '13px', color: '#6b7280', marginTop: '16px' }}>
-          <a href="/login" style={{ color: '#111827', fontWeight: '600', textDecoration: 'none' }}>{t('common.backToSignIn')}</a>
+        <p style={{ textAlign: 'center', fontSize: '13px', color: 'var(--text-secondary)', marginTop: '16px' }}>
+          <a href="/login" className="link-accent">{t('common.backToSignIn')}</a>
         </p>
       </div>
     </div>

@@ -67,6 +67,7 @@ const en = {
   'status.rejected': 'Rejected',
 
   'upload.title': 'Add a job application',
+  'upload.subtitle': 'Upload a screenshot and let Gemini fill in the details, or enter them yourself.',
   'upload.preview': 'Screenshot preview',
   'upload.extracting': 'Extracting...',
   'upload.extract': 'Extract job details',
@@ -79,6 +80,9 @@ const en = {
   'upload.useScreenshot': 'Use a screenshot instead',
   'upload.goToSettings': 'Go to Settings →',
   'upload.requiredFields': 'Company and title are required.',
+  'upload.dropTitle': 'Drop a screenshot here, or click to browse',
+  'upload.dropHint': 'PNG or JPG works best',
+  'upload.changeImage': 'Change',
 
   'field.company': 'Company',
   'field.title': 'Title',
@@ -186,6 +190,7 @@ const es: Record<TranslationKey, string> = {
   'status.rejected': 'Rechazada',
 
   'upload.title': 'Agregar una solicitud',
+  'upload.subtitle': 'Sube una captura y deja que Gemini complete los datos, o ingrésalos tú mismo.',
   'upload.preview': 'Vista previa de la captura',
   'upload.extracting': 'Extrayendo...',
   'upload.extract': 'Extraer datos de la oferta',
@@ -198,6 +203,9 @@ const es: Record<TranslationKey, string> = {
   'upload.useScreenshot': 'Usar una captura en su lugar',
   'upload.goToSettings': 'Ir a Configuración →',
   'upload.requiredFields': 'La empresa y el puesto son obligatorios.',
+  'upload.dropTitle': 'Suelta una captura aquí, o haz clic para buscar',
+  'upload.dropHint': 'PNG o JPG funcionan mejor',
+  'upload.changeImage': 'Cambiar',
 
   'field.company': 'Empresa',
   'field.title': 'Puesto',

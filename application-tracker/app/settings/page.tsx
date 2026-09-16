@@ -5,38 +5,28 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useLanguage } from '@/lib/language'
 import { LANGUAGES, LANGUAGE_NAMES, Language, isLanguage } from '@/lib/i18n'
-import Link from 'next/link'
+import { AppHeader } from '@/components/AppHeader'
+import { ArrowLeftIcon, LogOutIcon } from '@/lib/icons'
 
 const STATUSES = ['applied', 'interview', 'offer', 'rejected'] as const
 
 const cardStyle = {
-  background: '#fff',
-  border: '1px solid #e5e7eb',
-  borderRadius: '12px',
   padding: '24px',
   marginBottom: '16px',
 }
 
 const headingStyle = {
   fontSize: '16px',
-  fontWeight: '600',
-  color: '#111827',
+  fontWeight: '700',
+  color: 'var(--text-primary)',
   marginBottom: '8px',
 }
 
 const helpStyle = {
   fontSize: '13px',
-  color: '#6b7280',
+  color: 'var(--text-secondary)',
   marginBottom: '16px',
-}
-
-const inputStyle = {
-  width: '100%',
-  border: '1px solid #d1d5db',
-  borderRadius: '8px',
-  padding: '10px 12px',
-  fontSize: '14px',
-  boxSizing: 'border-box' as const,
+  lineHeight: 1.5,
 }
 
 export default function SettingsPage() {
@@ -113,28 +103,33 @@ export default function SettingsPage() {
   }
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: '#6b7280' }}>{t('common.loading')}</p>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>{t('common.loading')}</p>
     </div>
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f9fafb' }}>
-      <div style={{ maxWidth: '600px', margin: '0 auto', padding: '40px 24px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+      <AppHeader
+        maxWidth="640px"
+        right={
+          <a href="/dashboard" className="link-accent" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+            <ArrowLeftIcon size={14} strokeWidth={2.25} />
+            {t('common.backToDashboard').replace('← ', '')}
+          </a>
+        }
+      />
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', margin: 0 }}>{t('settings.title')}</h1>
-          <Link href="/dashboard" style={{ fontSize: '14px', color: '#6b7280', textDecoration: 'none' }}>
-            {t('common.backToDashboard')}
-          </Link>
-        </div>
+      <div style={{ maxWidth: '640px', margin: '0 auto', padding: '40px 24px 80px' }}>
+
+        <h1 style={{ fontSize: '28px', fontWeight: '800', letterSpacing: '-0.02em', color: 'var(--text-primary)', margin: '0 0 28px' }}>{t('settings.title')}</h1>
 
         {/* Gemini API key */}
-        <div style={cardStyle}>
+        <div className="card" style={cardStyle}>
           <h2 style={headingStyle}>{t('settings.keyHeading')}</h2>
           <p style={helpStyle}>
             {t('settings.keyGet')}{' '}
-            <a href="https://aistudio.google.com" target="_blank" rel="noreferrer" style={{ color: '#3b82f6' }}>aistudio.google.com</a>
+            <a href="https://aistudio.google.com" target="_blank" rel="noreferrer" className="link-accent">aistudio.google.com</a>
             {'. '}
             {t('settings.keyHelp')}
           </p>
@@ -143,12 +138,12 @@ export default function SettingsPage() {
             value={geminiKey}
             onChange={(e) => setGeminiKey(e.target.value)}
             placeholder="AIza..."
-            style={inputStyle}
+            className="field-input"
           />
         </div>
 
         {/* Reminders */}
-        <div style={cardStyle}>
+        <div className="card" style={cardStyle}>
           <h2 style={headingStyle}>{t('settings.remindersHeading')}</h2>
           <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#374151', marginBottom: '16px' }}>
             <input
@@ -169,13 +164,14 @@ export default function SettingsPage() {
             value={reminderDays}
             disabled={!remindersEnabled}
             onChange={(e) => setReminderDays(Number(e.target.value))}
-            style={{ ...inputStyle, maxWidth: '120px', opacity: remindersEnabled ? 1 : 0.5 }}
+            className="field-input"
+            style={{ maxWidth: '120px' }}
           />
           <p style={{ ...helpStyle, marginTop: '8px', marginBottom: 0 }}>{t('settings.reminderDaysHelp')}</p>
         </div>
 
         {/* New application defaults */}
-        <div style={cardStyle}>
+        <div className="card" style={cardStyle}>
           <h2 style={headingStyle}>{t('settings.newApplicationsHeading')}</h2>
           <label style={{ fontSize: '13px', color: '#374151', display: 'block', marginBottom: '6px' }}>
             {t('settings.defaultStatus')}
@@ -183,7 +179,8 @@ export default function SettingsPage() {
           <select
             value={defaultStatus}
             onChange={(e) => setDefaultStatus(e.target.value)}
-            style={{ ...inputStyle, maxWidth: '200px' }}
+            className="field-input"
+            style={{ maxWidth: '200px' }}
           >
             {STATUSES.map(status => (
               <option key={status} value={status}>{t(`status.${status}`)}</option>
@@ -193,12 +190,13 @@ export default function SettingsPage() {
         </div>
 
         {/* Language */}
-        <div style={cardStyle}>
+        <div className="card" style={cardStyle}>
           <h2 style={headingStyle}>{t('settings.languageHeading')}</h2>
           <select
             value={language}
             onChange={(e) => setLanguage(e.target.value as Language)}
-            style={{ ...inputStyle, maxWidth: '200px' }}
+            className="field-input"
+            style={{ maxWidth: '200px' }}
           >
             {LANGUAGES.map(code => (
               <option key={code} value={code}>{LANGUAGE_NAMES[code]}</option>
@@ -207,31 +205,34 @@ export default function SettingsPage() {
           <p style={{ ...helpStyle, marginTop: '8px', marginBottom: 0 }}>{t('settings.languageHelp')}</p>
         </div>
 
-        {error && <p style={{ color: '#dc2626', fontSize: '13px', marginBottom: '12px' }}>{error}</p>}
-        {message && <p style={{ color: '#16a34a', fontSize: '13px', marginBottom: '12px' }}>{message}</p>}
+        {error && <p style={{ color: 'var(--danger)', fontSize: '13px', marginBottom: '12px' }}>{error}</p>}
+        {message && <p style={{ color: 'var(--success)', fontSize: '13px', marginBottom: '12px' }}>{message}</p>}
 
         <button
           onClick={handleSave}
           disabled={saving}
-          style={{ background: '#111827', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', opacity: saving ? 0.5 : 1, marginBottom: '32px' }}
+          className="btn btn-primary"
+          style={{ marginBottom: '32px' }}
         >
+          {saving && <span className="spinner" />}
           {saving ? t('settings.saving') : t('settings.save')}
         </button>
 
         {/* Account */}
-        <div style={cardStyle}>
+        <div className="card" style={cardStyle}>
           <h2 style={headingStyle}>{t('settings.accountHeading')}</h2>
-          <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '16px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
             {t('settings.signedInAs')} <strong style={{ color: '#374151' }}>{email}</strong>
           </p>
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-            <Link href="/forgot-password" style={{ fontSize: '14px', color: '#3b82f6', textDecoration: 'none' }}>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+            <a href="/forgot-password" className="link-accent" style={{ fontSize: '14px' }}>
               {t('settings.changePassword')}
-            </Link>
+            </a>
             <button
               onClick={handleSignOut}
-              style={{ fontSize: '14px', color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
             >
+              <LogOutIcon size={14} />
               {t('settings.signOut')}
             </button>
           </div>

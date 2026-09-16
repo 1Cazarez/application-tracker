@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useLanguage } from '@/lib/language'
+import { BriefcaseIcon } from '@/lib/icons'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -57,15 +58,6 @@ export default function LoginPage() {
     })
   }
 
-  const inputStyle = {
-    width: '100%',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    padding: '10px 12px',
-    fontSize: '14px',
-    boxSizing: 'border-box' as const
-  }
-
   const labelStyle = {
     fontSize: '13px',
     color: '#374151',
@@ -74,34 +66,32 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '40px', width: '100%', maxWidth: '400px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '8px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
+        <span style={{
+          width: '34px', height: '34px', borderRadius: '10px', background: 'var(--text-primary)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexShrink: 0,
+        }}>
+          <BriefcaseIcon size={17} strokeWidth={2.25} />
+        </span>
+        <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+          Application Tracker
+        </span>
+      </div>
+
+      <div className="card fade-in-up" style={{ padding: '40px', width: '100%', maxWidth: '400px' }}>
+        <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px' }}>
           {isSignUp ? t('login.createAccount') : t('login.welcomeBack')}
         </h1>
-        <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '24px' }}>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px' }}>
           {isSignUp ? t('login.subtitleSignUp') : t('login.subtitleSignIn')}
         </p>
 
         {/* Google button */}
         <button
           onClick={handleGoogleSignIn}
-          style={{
-            width: '100%',
-            background: '#fff',
-            color: '#374151',
-            border: '1px solid #d1d5db',
-            borderRadius: '8px',
-            padding: '12px',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            marginBottom: '16px'
-          }}
+          className="btn btn-secondary"
+          style={{ width: '100%', marginBottom: '16px' }}
         >
           <svg width="18" height="18" viewBox="0 0 48 48">
             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -113,9 +103,9 @@ export default function LoginPage() {
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-          <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
-          <span style={{ fontSize: '13px', color: '#9ca3af' }}>{t('login.or')}</span>
-          <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+          <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+          <span style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>{t('login.or')}</span>
+          <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
         </div>
 
         <div style={{ marginBottom: '16px' }}>
@@ -125,7 +115,7 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@email.com"
-            style={inputStyle}
+            className="field-input"
           />
         </div>
 
@@ -136,7 +126,7 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
-            style={inputStyle}
+            className="field-input"
           />
         </div>
 
@@ -148,41 +138,44 @@ export default function LoginPage() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="••••••••"
+              className="field-input"
               style={{
-                ...inputStyle,
-                borderColor: confirmPassword && password !== confirmPassword ? '#dc2626' : '#d1d5db'
+                borderColor: confirmPassword && password !== confirmPassword ? 'var(--danger)' : undefined
               }}
             />
             {confirmPassword && password !== confirmPassword && (
-              <p style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px' }}>{t('login.passwordsDoNotMatch')}</p>
+              <p style={{ color: 'var(--danger)', fontSize: '12px', marginTop: '4px' }}>{t('login.passwordsDoNotMatch')}</p>
             )}
           </div>
         )}
 
-        {error && <p style={{ color: '#dc2626', fontSize: '13px', marginBottom: '16px' }}>{error}</p>}
-        {message && <p style={{ color: '#16a34a', fontSize: '13px', marginBottom: '16px' }}>{message}</p>}
+        {error && <p style={{ color: 'var(--danger)', fontSize: '13px', marginBottom: '16px' }}>{error}</p>}
+        {message && <p style={{ color: 'var(--success)', fontSize: '13px', marginBottom: '16px' }}>{message}</p>}
 
         <button
           onClick={handleSubmit}
           disabled={loading}
-          style={{ width: '100%', background: '#111827', color: '#fff', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', opacity: loading ? 0.5 : 1 }}
+          className="btn btn-primary"
+          style={{ width: '100%' }}
         >
+          {loading && <span className="spinner" />}
           {loading ? t('common.loading') : isSignUp ? t('login.createAccount') : t('login.signIn')}
         </button>
 
         {!isSignUp && (
           <p style={{ textAlign: 'center', fontSize: '13px', marginTop: '16px' }}>
-            <a href="/forgot-password" style={{ color: '#6b7280', textDecoration: 'none' }}>
+            <a href="/forgot-password" style={{ color: 'var(--text-secondary)' }}>
               {t('login.forgotPassword')}
             </a>
           </p>
         )}
 
-        <p style={{ textAlign: 'center', fontSize: '13px', color: '#6b7280', marginTop: '16px' }}>
+        <p style={{ textAlign: 'center', fontSize: '13px', color: 'var(--text-secondary)', marginTop: '16px' }}>
           {isSignUp ? t('login.haveAccount') : t('login.noAccount')}{' '}
           <button
             onClick={() => { setIsSignUp(!isSignUp); setError(null); setConfirmPassword('') }}
-            style={{ color: '#111827', fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px' }}
+            className="link-accent"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px' }}
           >
             {isSignUp ? t('login.signIn') : t('login.signUp')}
           </button>
