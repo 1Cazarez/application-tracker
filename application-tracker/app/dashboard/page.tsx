@@ -10,17 +10,17 @@ import { AppHeader } from '@/components/AppHeader'
 import { CompanyLogo } from '@/components/CompanyLogo'
 import {
   PlusIcon, SettingsIcon, LogOutIcon, DollarSignIcon, MapPinIcon, BriefcaseIcon,
-  CalendarIcon, CalendarCheckIcon, AlertTriangleIcon, ExternalLinkIcon, Trash2Icon,
+  CalendarIcon, CalendarCheckIcon, AlertTriangleIcon, ExternalLinkIcon, Trash2Icon, PencilIcon,
 } from '@/lib/icons'
 
 const STATUSES = ['applied', 'interview', 'offer', 'rejected'] as const
 type Status = (typeof STATUSES)[number]
 
 const STATUS_STYLES: Record<Status, { background: string; color: string }> = {
-  applied:   { background: '#dbeafe', color: '#1d4ed8' },
-  interview: { background: '#fef3c7', color: '#d97706' },
-  offer:     { background: '#dcfce7', color: '#15803d' },
-  rejected:  { background: '#fee2e2', color: '#dc2626' },
+  applied:   { background: 'var(--status-applied-bg)', color: 'var(--status-applied-fg)' },
+  interview: { background: 'var(--status-interview-bg)', color: 'var(--status-interview-fg)' },
+  offer:     { background: 'var(--status-offer-bg)', color: 'var(--status-offer-fg)' },
+  rejected:  { background: 'var(--status-rejected-bg)', color: 'var(--status-rejected-fg)' },
 }
 
 export default function Dashboard() {
@@ -152,7 +152,7 @@ export default function Dashboard() {
                       <CompanyLogo company={job.company} url={job.url} size={40} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <h2 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)', margin: '0 0 4px' }}>{job.title}</h2>
-                        <p style={{ fontSize: '14px', color: '#374151', margin: '0 0 10px', fontWeight: '500' }}>{job.company}</p>
+                        <p style={{ fontSize: '14px', color: 'var(--text-body)', margin: '0 0 10px', fontWeight: '500' }}>{job.company}</p>
                         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                           {job.pay && (
                             <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--text-secondary)' }}>
@@ -200,6 +200,10 @@ export default function Dashboard() {
                           <option key={value} value={value}>{t(`status.${value}`)}</option>
                         ))}
                       </select>
+                      <Link href={`/edit/${job.id}`} className="btn btn-secondary btn-sm">
+                        <PencilIcon size={12} strokeWidth={2.25} />
+                        {t('dashboard.edit')}
+                      </Link>
                       {job.url && (
                         <a href={job.url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--info)' }}>
                           {t('dashboard.viewListing').replace(' ↗', '')} <ExternalLinkIcon size={11} />

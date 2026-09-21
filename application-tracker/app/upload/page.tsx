@@ -4,38 +4,15 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useLanguage } from '@/lib/language'
-import { TranslationKey, isLanguage } from '@/lib/i18n'
+import { isLanguage } from '@/lib/i18n'
 import { parsePastedJob } from '@/lib/parseJobText'
+import { EMPTY_JOB, blankToNull } from '@/lib/jobFields'
 import { AppHeader } from '@/components/AppHeader'
+import { JobFields } from '@/components/JobFields'
 import {
   ArrowLeftIcon, UploadCloudIcon, SparklesIcon, CheckCircleIcon, AlertCircleIcon,
-  BuildingIcon, BriefcaseIcon, CalendarIcon, CalendarCheckIcon, DollarSignIcon, MapPinIcon,
-  LinkIcon, TagIcon, XIcon, ClipboardIcon,
+  XIcon, ClipboardIcon,
 } from '@/lib/icons'
-
-const EMPTY_JOB = {
-  company: '',
-  title: '',
-  date_applied: '',
-  deadline: '',
-  pay: '',
-  location: '',
-  url: '',
-  job_type: '',
-}
-
-const FIELD_ICONS: Record<string, typeof BuildingIcon> = {
-  company: BuildingIcon,
-  title: BriefcaseIcon,
-  date_applied: CalendarCheckIcon,
-  deadline: CalendarIcon,
-  pay: DollarSignIcon,
-  location: MapPinIcon,
-  url: LinkIcon,
-  job_type: TagIcon,
-}
-
-const DATE_FIELDS = new Set(['deadline', 'date_applied'])
 
 const linkButtonStyle: React.CSSProperties = {
   background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', padding: 0,
@@ -167,16 +144,8 @@ export default function UploadPage() {
     setLoading(true)
     setError(null)
     try {
-      // Blank fields must go in as null, not '' — deadline is a date column
-      // and Postgres rejects the empty string.
-      const fields = Object.fromEntries(
-        Object.entries(extracted).map(([key, value]) =>
-          [key, typeof value === 'string' && value.trim() === '' ? null : value]
-        )
-      )
-
       const { error } = await supabase.from('jobs').insert([{
-        ...fields,
+        ...blankToNull(extracted),
         status: defaultStatus,
         user_id: userId,
       }])
@@ -329,7 +298,7 @@ export default function UploadPage() {
 
         {error && (
           <div className="card fade-in-up" style={{
-            background: 'var(--danger-soft)', borderColor: '#fecaca', padding: '14px 16px',
+            background: 'var(--danger-soft)', borderColor: 'var(--danger-border)', padding: '14px 16px',
             marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'flex-start',
           }}>
             <AlertCircleIcon size={16} strokeWidth={2} style={{ color: 'var(--danger)', flexShrink: 0, marginTop: '1px' }} />
@@ -356,28 +325,7 @@ export default function UploadPage() {
               </h2>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-              {Object.entries(extracted).map(([key, value]) => {
-                const Icon = FIELD_ICONS[key] ?? TagIcon
-                return (
-                  <div key={key} style={{ gridColumn: key === 'url' ? '1 / -1' : undefined }}>
-                    <label style={{
-                      fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)',
-                      display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px',
-                    }}>
-                      <Icon size={13} strokeWidth={2.25} style={{ color: 'var(--text-tertiary)' }} />
-                      {t(`field.${key}` as TranslationKey)}
-                    </label>
-                    <input
-                      type={DATE_FIELDS.has(key) ? 'date' : 'text'}
-                      className="field-input"
-                      value={value as string}
-                      onChange={(e) => setExtracted({ ...extracted, [key]: e.target.value })}
-                    />
-                  </div>
-                )
-              })}
-            </div>
+            <JobFields values={extracted} onChange={setExtracted} />
 
             <button
               onClick={handleSave}

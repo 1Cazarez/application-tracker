@@ -62,6 +62,14 @@ const en = {
   'dashboard.delete': 'Delete',
   'dashboard.daysLeft': '({count} days)',
   'dashboard.appliedOn': 'Applied {date}',
+  'dashboard.edit': 'Edit',
+
+  'edit.title': 'Edit application',
+  'edit.subtitle': 'Update the details for this application.',
+  'edit.save': 'Save changes',
+  'edit.saving': 'Saving...',
+  'edit.cancel': 'Cancel',
+  'edit.notFound': 'Application not found.',
 
   'status.applied': 'Applied',
   'status.interview': 'Interview',
@@ -121,6 +129,19 @@ const en = {
 
   'settings.languageHeading': 'Language',
   'settings.languageHelp': 'Applies to the app and your reminder emails.',
+
+  'settings.appearanceHeading': 'Appearance',
+  'settings.appearanceHelp': 'Applies instantly and is remembered on this device.',
+  'settings.themeMode': 'Theme',
+  'settings.mode.system': 'System',
+  'settings.mode.light': 'Light',
+  'settings.mode.dark': 'Dark',
+  'settings.accent': 'Accent color',
+  'settings.accent.indigo': 'Indigo',
+  'settings.accent.emerald': 'Emerald',
+  'settings.accent.sky': 'Sky',
+  'settings.accent.rose': 'Rose',
+  'settings.accent.amber': 'Amber',
 
   'settings.accountHeading': 'Account',
   'settings.signedInAs': 'Signed in as',
@@ -193,6 +214,14 @@ const es: Record<TranslationKey, string> = {
   'dashboard.delete': 'Eliminar',
   'dashboard.daysLeft': '({count} días)',
   'dashboard.appliedOn': 'Enviada el {date}',
+  'dashboard.edit': 'Editar',
+
+  'edit.title': 'Editar solicitud',
+  'edit.subtitle': 'Actualiza los datos de esta solicitud.',
+  'edit.save': 'Guardar cambios',
+  'edit.saving': 'Guardando...',
+  'edit.cancel': 'Cancelar',
+  'edit.notFound': 'Solicitud no encontrada.',
 
   'status.applied': 'Enviada',
   'status.interview': 'Entrevista',
@@ -252,6 +281,19 @@ const es: Record<TranslationKey, string> = {
 
   'settings.languageHeading': 'Idioma',
   'settings.languageHelp': 'Se aplica a la aplicación y a tus correos de recordatorio.',
+
+  'settings.appearanceHeading': 'Apariencia',
+  'settings.appearanceHelp': 'Se aplica al instante y se recuerda en este dispositivo.',
+  'settings.themeMode': 'Tema',
+  'settings.mode.system': 'Sistema',
+  'settings.mode.light': 'Claro',
+  'settings.mode.dark': 'Oscuro',
+  'settings.accent': 'Color de acento',
+  'settings.accent.indigo': 'Índigo',
+  'settings.accent.emerald': 'Esmeralda',
+  'settings.accent.sky': 'Celeste',
+  'settings.accent.rose': 'Rosa',
+  'settings.accent.amber': 'Ámbar',
 
   'settings.accountHeading': 'Cuenta',
   'settings.signedInAs': 'Sesión iniciada como',

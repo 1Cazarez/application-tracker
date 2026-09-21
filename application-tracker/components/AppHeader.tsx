@@ -10,8 +10,8 @@ export function AppHeader({ right, maxWidth = '880px' }: { right?: React.ReactNo
       }}>
         <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span style={{
-            width: 32, height: 32, borderRadius: 9, background: 'var(--text-primary)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexShrink: 0,
+            width: 32, height: 32, borderRadius: 9, background: 'var(--primary)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--on-primary)', flexShrink: 0,
           }}>
             <BriefcaseIcon size={16} strokeWidth={2.25} />
           </span>

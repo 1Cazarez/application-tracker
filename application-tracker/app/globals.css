@@ -1,28 +1,58 @@
+/*
+ * Theming: every color the UI uses is a variable defined here. :root is the
+ * light palette; data-theme="dark" (set on <html> before first paint) swaps
+ * it. data-accent swaps only the accent trio. In dark mode the accent is a
+ * lighter tint, so text on it uses --on-accent (dark) instead of white.
+ */
+
 :root {
+  color-scheme: light;
+
   --bg: #f6f7f9;
   --surface: #ffffff;
+  --surface-hover: #f9fafb;
   --border: #e5e7eb;
   --border-strong: #d1d5db;
+  --border-hover: #9ca3af;
 
   --text-primary: #111827;
+  --text-body: #374151;
   --text-secondary: #6b7280;
   --text-tertiary: #9ca3af;
+
+  --primary: #111827;
+  --primary-hover: #000000;
+  --on-primary: #ffffff;
 
   --accent: #4338ca;
   --accent-hover: #3730a3;
   --accent-soft: #eef2ff;
+  --on-accent: #ffffff;
 
   --success: #16a34a;
   --success-hover: #15803d;
   --success-soft: #dcfce7;
+  --success-border: #bbf7d0;
 
   --danger: #dc2626;
   --danger-soft: #fef2f2;
+  --danger-border: #fecaca;
 
   --warning: #d97706;
   --warning-soft: #fffbeb;
+  --warning-border: #fde68a;
+  --warning-text: #92400e;
 
   --info: #2563eb;
+
+  --status-applied-bg: #dbeafe;
+  --status-applied-fg: #1d4ed8;
+  --status-interview-bg: #fef3c7;
+  --status-interview-fg: #d97706;
+  --status-offer-bg: #dcfce7;
+  --status-offer-fg: #15803d;
+  --status-rejected-bg: #fee2e2;
+  --status-rejected-fg: #dc2626;
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -33,6 +63,71 @@
   --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
   --shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.14);
 }
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: #0b0f17;
+  --surface: #131a26;
+  --surface-hover: #1a2333;
+  --border: #243044;
+  --border-strong: #33425c;
+  --border-hover: #4b5b78;
+
+  --text-primary: #f1f5f9;
+  --text-body: #cbd5e1;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+
+  --primary: #f1f5f9;
+  --primary-hover: #ffffff;
+  --on-primary: #0b0f17;
+
+  --accent: #818cf8;
+  --accent-hover: #a5b4fc;
+  --accent-soft: rgba(129, 140, 248, 0.16);
+  --on-accent: #0b0f17;
+
+  --success-soft: rgba(34, 197, 94, 0.16);
+  --success-border: rgba(34, 197, 94, 0.35);
+
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.12);
+  --danger-border: rgba(248, 113, 113, 0.35);
+
+  --warning: #fbbf24;
+  --warning-soft: rgba(251, 191, 36, 0.12);
+  --warning-border: rgba(251, 191, 36, 0.35);
+  --warning-text: #fcd34d;
+
+  --info: #60a5fa;
+
+  --status-applied-bg: rgba(96, 165, 250, 0.16);
+  --status-applied-fg: #60a5fa;
+  --status-interview-bg: rgba(251, 191, 36, 0.16);
+  --status-interview-fg: #fbbf24;
+  --status-offer-bg: rgba(74, 222, 128, 0.16);
+  --status-offer-fg: #4ade80;
+  --status-rejected-bg: rgba(248, 113, 113, 0.16);
+  --status-rejected-fg: #f87171;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.55);
+}
+
+/* Accent colors. Indigo is the default and lives in the blocks above. */
+
+:root[data-accent='emerald'] { --accent: #047857; --accent-hover: #065f46; --accent-soft: #ecfdf5; }
+:root[data-accent='sky'] { --accent: #0369a1; --accent-hover: #075985; --accent-soft: #f0f9ff; }
+:root[data-accent='rose'] { --accent: #be123c; --accent-hover: #9f1239; --accent-soft: #fff1f2; }
+:root[data-accent='amber'] { --accent: #b45309; --accent-hover: #92400e; --accent-soft: #fffbeb; }
+
+:root[data-theme='dark'][data-accent='emerald'] { --accent: #34d399; --accent-hover: #6ee7b7; --accent-soft: rgba(52, 211, 153, 0.16); }
+:root[data-theme='dark'][data-accent='sky'] { --accent: #38bdf8; --accent-hover: #7dd3fc; --accent-soft: rgba(56, 189, 248, 0.16); }
+:root[data-theme='dark'][data-accent='rose'] { --accent: #fb7185; --accent-hover: #fda4af; --accent-soft: rgba(251, 113, 133, 0.16); }
+:root[data-theme='dark'][data-accent='amber'] { --accent: #fbbf24; --accent-hover: #fcd34d; --accent-soft: rgba(251, 191, 36, 0.16); }
 
 html {
   height: 100%;
@@ -90,7 +185,12 @@ button {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: var(--border-hover);
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--accent);
 }
 
 button:focus-visible,
@@ -145,19 +245,19 @@ select:focus-visible {
 }
 
 .btn-primary {
-  background: var(--text-primary);
-  color: #fff;
+  background: var(--primary);
+  color: var(--on-primary);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #000;
+  background: var(--primary-hover);
   box-shadow: var(--shadow-sm);
   transform: translateY(-1px);
 }
 
 .btn-accent {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .btn-accent:hover:not(:disabled) {
@@ -184,8 +284,8 @@ select:focus-visible {
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #f9fafb;
-  border-color: #9ca3af;
+  background: var(--surface-hover);
+  border-color: var(--border-hover);
 }
 
 .btn-ghost {
@@ -273,8 +373,8 @@ select:focus-visible {
   width: 15px;
   height: 15px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-top-color: #fff;
+  border: 2px solid color-mix(in srgb, currentColor 35%, transparent);
+  border-top-color: currentColor;
   animation: spin 0.6s linear infinite;
   flex-shrink: 0;
 }
@@ -292,4 +392,28 @@ select:focus-visible {
 
 .fade-in-up {
   animation: fadeInUp 0.25s ease;
+}
+
+/* Accent color picker */
+
+.swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--border-strong);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.swatch:hover {
+  transform: scale(1.08);
+}
+
+.swatch[aria-checked='true'] {
+  box-shadow: 0 0 0 2px var(--text-primary);
 }

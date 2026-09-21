@@ -5,10 +5,14 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useLanguage } from '@/lib/language'
 import { LANGUAGES, LANGUAGE_NAMES, Language, isLanguage } from '@/lib/i18n'
+import { useTheme } from '@/lib/theme'
+import { ACCENTS, ACCENT_SWATCHES, THEME_MODES } from '@/lib/theme-config'
 import { AppHeader } from '@/components/AppHeader'
-import { ArrowLeftIcon, LogOutIcon } from '@/lib/icons'
+import { ArrowLeftIcon, LogOutIcon, SunIcon, MoonIcon, MonitorIcon, CheckIcon } from '@/lib/icons'
 
 const STATUSES = ['applied', 'interview', 'offer', 'rejected'] as const
+
+const MODE_ICONS = { system: MonitorIcon, light: SunIcon, dark: MoonIcon }
 
 const cardStyle = {
   padding: '24px',
@@ -32,6 +36,7 @@ const helpStyle = {
 export default function SettingsPage() {
   const router = useRouter()
   const { t, language, setLanguage } = useLanguage()
+  const { mode, accent, setMode, setAccent } = useTheme()
 
   const [userId, setUserId] = useState<string | null>(null)
   const [email, setEmail] = useState('')
@@ -145,7 +150,7 @@ export default function SettingsPage() {
         {/* Reminders */}
         <div className="card" style={cardStyle}>
           <h2 style={headingStyle}>{t('settings.remindersHeading')}</h2>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#374151', marginBottom: '16px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: 'var(--text-body)', marginBottom: '16px' }}>
             <input
               type="checkbox"
               checked={remindersEnabled}
@@ -154,7 +159,7 @@ export default function SettingsPage() {
             {t('settings.remindersEnabled')}
           </label>
 
-          <label style={{ fontSize: '13px', color: '#374151', display: 'block', marginBottom: '6px' }}>
+          <label style={{ fontSize: '13px', color: 'var(--text-body)', display: 'block', marginBottom: '6px' }}>
             {t('settings.reminderDays')}
           </label>
           <input
@@ -173,7 +178,7 @@ export default function SettingsPage() {
         {/* New application defaults */}
         <div className="card" style={cardStyle}>
           <h2 style={headingStyle}>{t('settings.newApplicationsHeading')}</h2>
-          <label style={{ fontSize: '13px', color: '#374151', display: 'block', marginBottom: '6px' }}>
+          <label style={{ fontSize: '13px', color: 'var(--text-body)', display: 'block', marginBottom: '6px' }}>
             {t('settings.defaultStatus')}
           </label>
           <select
@@ -205,6 +210,55 @@ export default function SettingsPage() {
           <p style={{ ...helpStyle, marginTop: '8px', marginBottom: 0 }}>{t('settings.languageHelp')}</p>
         </div>
 
+        {/* Appearance */}
+        <div className="card" style={cardStyle}>
+          <h2 style={headingStyle}>{t('settings.appearanceHeading')}</h2>
+          <p style={helpStyle}>{t('settings.appearanceHelp')}</p>
+
+          <label style={{ fontSize: '13px', color: 'var(--text-body)', display: 'block', marginBottom: '8px' }}>
+            {t('settings.themeMode')}
+          </label>
+          <div role="radiogroup" aria-label={t('settings.themeMode')} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
+            {THEME_MODES.map(value => {
+              const Icon = MODE_ICONS[value]
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={mode === value}
+                  onClick={() => setMode(value)}
+                  className={`btn btn-sm ${mode === value ? 'btn-accent' : 'btn-secondary'}`}
+                >
+                  <Icon size={14} />
+                  {t(`settings.mode.${value}`)}
+                </button>
+              )
+            })}
+          </div>
+
+          <label style={{ fontSize: '13px', color: 'var(--text-body)', display: 'block', marginBottom: '8px' }}>
+            {t('settings.accent')}
+          </label>
+          <div role="radiogroup" aria-label={t('settings.accent')} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', padding: '2px' }}>
+            {ACCENTS.map(value => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={accent === value}
+                aria-label={t(`settings.accent.${value}`)}
+                title={t(`settings.accent.${value}`)}
+                onClick={() => setAccent(value)}
+                className="swatch"
+                style={{ background: ACCENT_SWATCHES[value] }}
+              >
+                {accent === value && <CheckIcon size={15} strokeWidth={3} />}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {error && <p style={{ color: 'var(--danger)', fontSize: '13px', marginBottom: '12px' }}>{error}</p>}
         {message && <p style={{ color: 'var(--success)', fontSize: '13px', marginBottom: '12px' }}>{message}</p>}
 
@@ -222,7 +276,7 @@ export default function SettingsPage() {
         <div className="card" style={cardStyle}>
           <h2 style={headingStyle}>{t('settings.accountHeading')}</h2>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-            {t('settings.signedInAs')} <strong style={{ color: '#374151' }}>{email}</strong>
+            {t('settings.signedInAs')} <strong style={{ color: 'var(--text-body)' }}>{email}</strong>
           </p>
           <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
             <a href="/forgot-password" className="link-accent" style={{ fontSize: '14px' }}>

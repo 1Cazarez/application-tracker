@@ -60,7 +60,7 @@ export default function LoginPage() {
 
   const labelStyle = {
     fontSize: '13px',
-    color: '#374151',
+    color: 'var(--text-body)',
     display: 'block',
     marginBottom: '6px'
   }
@@ -69,8 +69,8 @@ export default function LoginPage() {
     <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
         <span style={{
-          width: '34px', height: '34px', borderRadius: '10px', background: 'var(--text-primary)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexShrink: 0,
+          width: '34px', height: '34px', borderRadius: '10px', background: 'var(--primary)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--on-primary)', flexShrink: 0,
         }}>
           <BriefcaseIcon size={17} strokeWidth={2.25} />
         </span>

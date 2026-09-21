@@ -55,7 +55,7 @@ export default function ResetPasswordPage() {
 
   const labelStyle = {
     fontSize: '13px',
-    color: '#374151',
+    color: 'var(--text-body)',
     display: 'block',
     marginBottom: '6px',
   }
@@ -64,8 +64,8 @@ export default function ResetPasswordPage() {
     <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
         <span style={{
-          width: '34px', height: '34px', borderRadius: '10px', background: 'var(--text-primary)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexShrink: 0,
+          width: '34px', height: '34px', borderRadius: '10px', background: 'var(--primary)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--on-primary)', flexShrink: 0,
         }}>
           <BriefcaseIcon size={17} strokeWidth={2.25} />
         </span>
@@ -81,16 +81,16 @@ export default function ResetPasswordPage() {
         </p>
 
         {done ? (
-          <div style={{ background: 'var(--success-soft)', border: '1px solid #bbf7d0', borderRadius: 'var(--radius-sm)', padding: '16px' }}>
+          <div style={{ background: 'var(--success-soft)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-sm)', padding: '16px' }}>
             <p style={{ color: 'var(--success)', fontSize: '14px', margin: 0 }}>
               {t('reset.done')}
             </p>
           </div>
         ) : !ready ? (
-          <div style={{ background: 'var(--warning-soft)', border: '1px solid #fde68a', borderRadius: 'var(--radius-sm)', padding: '16px' }}>
-            <p style={{ color: '#92400e', fontSize: '14px', margin: 0 }}>
+          <div style={{ background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', borderRadius: 'var(--radius-sm)', padding: '16px' }}>
+            <p style={{ color: 'var(--warning-text)', fontSize: '14px', margin: 0 }}>
               {t('reset.invalidLink')}{' '}
-              <a href="/forgot-password" style={{ color: '#92400e', fontWeight: '600' }}>{t('reset.requestNew')}</a>
+              <a href="/forgot-password" style={{ color: 'var(--warning-text)', fontWeight: '600' }}>{t('reset.requestNew')}</a>
             </p>
           </div>
         ) : (
