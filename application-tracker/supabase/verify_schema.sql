@@ -82,5 +82,10 @@ with checks as (
 
   union all select 18, 'no orphan user_settings (user_id is null)',
     not exists (select 1 from user_settings where user_id is null)
+
+  -- 0003: date applied
+  union all select 19, 'jobs.date_applied exists',
+    exists (select 1 from information_schema.columns
+      where table_schema = 'public' and table_name = 'jobs' and column_name = 'date_applied')
 )
 select seq, check_name, ok from checks order by seq;

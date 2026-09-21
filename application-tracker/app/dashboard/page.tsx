@@ -7,9 +7,10 @@ import { useLanguage } from '@/lib/language'
 import { isLanguage } from '@/lib/i18n'
 import Link from 'next/link'
 import { AppHeader } from '@/components/AppHeader'
+import { CompanyLogo } from '@/components/CompanyLogo'
 import {
   PlusIcon, SettingsIcon, LogOutIcon, DollarSignIcon, MapPinIcon, BriefcaseIcon,
-  CalendarIcon, AlertTriangleIcon, ExternalLinkIcon, Trash2Icon,
+  CalendarIcon, CalendarCheckIcon, AlertTriangleIcon, ExternalLinkIcon, Trash2Icon,
 } from '@/lib/icons'
 
 const STATUSES = ['applied', 'interview', 'offer', 'rejected'] as const
@@ -147,34 +148,42 @@ export default function Dashboard() {
                   padding: '20px', borderLeft: `4px solid ${status.color}`,
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 240px' }}>
-                      <h2 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)', margin: '0 0 4px' }}>{job.title}</h2>
-                      <p style={{ fontSize: '14px', color: '#374151', margin: '0 0 10px', fontWeight: '500' }}>{job.company}</p>
-                      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                        {job.pay && (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                            <DollarSignIcon size={13} /> {job.pay}
-                          </span>
-                        )}
-                        {job.location && (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                            <MapPinIcon size={13} /> {job.location}
-                          </span>
-                        )}
-                        {job.job_type && (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                            <BriefcaseIcon size={13} /> {job.job_type}
-                          </span>
-                        )}
-                        {job.deadline && (
-                          <span style={{
-                            display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px',
-                            color: urgent ? 'var(--danger)' : 'var(--text-secondary)', fontWeight: urgent ? '600' : '400',
-                          }}>
-                            {urgent ? <AlertTriangleIcon size={13} /> : <CalendarIcon size={13} />}
-                            {job.deadline} {t('dashboard.daysLeft', { count: days ?? 0 })}
-                          </span>
-                        )}
+                    <div style={{ flex: '1 1 240px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                      <CompanyLogo company={job.company} url={job.url} size={40} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <h2 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)', margin: '0 0 4px' }}>{job.title}</h2>
+                        <p style={{ fontSize: '14px', color: '#374151', margin: '0 0 10px', fontWeight: '500' }}>{job.company}</p>
+                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                          {job.pay && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                              <DollarSignIcon size={13} /> {job.pay}
+                            </span>
+                          )}
+                          {job.location && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                              <MapPinIcon size={13} /> {job.location}
+                            </span>
+                          )}
+                          {job.job_type && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                              <BriefcaseIcon size={13} /> {job.job_type}
+                            </span>
+                          )}
+                          {job.date_applied && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                              <CalendarCheckIcon size={13} /> {t('dashboard.appliedOn', { date: job.date_applied })}
+                            </span>
+                          )}
+                          {job.deadline && (
+                            <span style={{
+                              display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px',
+                              color: urgent ? 'var(--danger)' : 'var(--text-secondary)', fontWeight: urgent ? '600' : '400',
+                            }}>
+                              {urgent ? <AlertTriangleIcon size={13} /> : <CalendarIcon size={13} />}
+                              {job.deadline} {t('dashboard.daysLeft', { count: days ?? 0 })}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>

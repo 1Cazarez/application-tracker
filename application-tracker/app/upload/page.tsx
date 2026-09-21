@@ -5,15 +5,18 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useLanguage } from '@/lib/language'
 import { TranslationKey, isLanguage } from '@/lib/i18n'
+import { parsePastedJob } from '@/lib/parseJobText'
 import { AppHeader } from '@/components/AppHeader'
 import {
   ArrowLeftIcon, UploadCloudIcon, SparklesIcon, CheckCircleIcon, AlertCircleIcon,
-  BuildingIcon, BriefcaseIcon, CalendarIcon, DollarSignIcon, MapPinIcon, LinkIcon, TagIcon, XIcon,
+  BuildingIcon, BriefcaseIcon, CalendarIcon, CalendarCheckIcon, DollarSignIcon, MapPinIcon,
+  LinkIcon, TagIcon, XIcon, ClipboardIcon,
 } from '@/lib/icons'
 
 const EMPTY_JOB = {
   company: '',
   title: '',
+  date_applied: '',
   deadline: '',
   pay: '',
   location: '',
@@ -24,12 +27,21 @@ const EMPTY_JOB = {
 const FIELD_ICONS: Record<string, typeof BuildingIcon> = {
   company: BuildingIcon,
   title: BriefcaseIcon,
+  date_applied: CalendarCheckIcon,
   deadline: CalendarIcon,
   pay: DollarSignIcon,
   location: MapPinIcon,
   url: LinkIcon,
   job_type: TagIcon,
 }
+
+const DATE_FIELDS = new Set(['deadline', 'date_applied'])
+
+const linkButtonStyle: React.CSSProperties = {
+  background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', padding: 0,
+}
+
+const todayISO = () => new Date().toISOString().split('T')[0]
 
 export default function UploadPage() {
   const router = useRouter()
@@ -42,7 +54,8 @@ export default function UploadPage() {
   const [dragging, setDragging] = useState(false)
   const [loading, setLoading] = useState(false)
   const [extracted, setExtracted] = useState<any>(null)
-  const [manual, setManual] = useState(false)
+  const [entryMode, setEntryMode] = useState<'screenshot' | 'manual' | 'paste'>('screenshot')
+  const [pasteText, setPasteText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [needsKey, setNeedsKey] = useState(false)
 
@@ -72,7 +85,7 @@ export default function UploadPage() {
     setFile(f)
     setPreview(URL.createObjectURL(f))
     setExtracted(null)
-    setManual(false)
+    setEntryMode('screenshot')
     setError(null)
   }
 
@@ -95,10 +108,23 @@ export default function UploadPage() {
   }
 
   const startManualEntry = () => {
-    setExtracted({ ...EMPTY_JOB })
-    setManual(true)
+    setExtracted({ ...EMPTY_JOB, date_applied: todayISO() })
+    setEntryMode('manual')
     setError(null)
     setNeedsKey(false)
+  }
+
+  const startPasteEntry = () => {
+    setPasteText('')
+    setEntryMode('paste')
+    setError(null)
+    setNeedsKey(false)
+  }
+
+  const handleAutofillFromText = () => {
+    if (!pasteText.trim()) return
+    setExtracted({ ...EMPTY_JOB, date_applied: todayISO(), ...parsePastedJob(pasteText) })
+    setError(null)
   }
 
   const handleExtract = async () => {
@@ -124,8 +150,7 @@ export default function UploadPage() {
         if (data.needsKey) setNeedsKey(true)
         throw new Error(data.error)
       }
-      setExtracted(data)
-      setManual(false)
+      setExtracted({ ...EMPTY_JOB, date_applied: todayISO(), ...data })
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -192,7 +217,7 @@ export default function UploadPage() {
           </p>
         </div>
 
-        {!manual && !extracted && (
+        {entryMode === 'screenshot' && !extracted && (
           <div className="card fade-in-up" style={{ padding: '20px', marginBottom: '16px' }}>
             {!preview ? (
               <label
@@ -247,14 +272,56 @@ export default function UploadPage() {
           </div>
         )}
 
-        {!extracted && (
+        {entryMode === 'paste' && !extracted && (
+          <div className="card fade-in-up" style={{ padding: '20px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '14px' }}>
+              <div style={{
+                width: '36px', height: '36px', borderRadius: '10px', background: 'var(--accent-soft)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', flexShrink: 0,
+              }}>
+                <ClipboardIcon size={17} strokeWidth={2} />
+              </div>
+              <div>
+                <p style={{ fontWeight: '600', fontSize: '14px', color: 'var(--text-primary)', margin: '0 0 2px' }}>
+                  {t('upload.pasteTitle')}
+                </p>
+                <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', margin: 0 }}>{t('upload.pasteHint')}</p>
+              </div>
+            </div>
+            <textarea
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              placeholder={t('upload.pastePlaceholder')}
+              className="field-input"
+              rows={8}
+              style={{ resize: 'vertical', marginBottom: '14px', fontFamily: 'inherit' }}
+            />
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button type="button" onClick={() => setEntryMode('screenshot')} className="btn btn-secondary">
+                <XIcon size={13} strokeWidth={2.5} />
+              </button>
+              <button
+                type="button"
+                onClick={handleAutofillFromText}
+                disabled={!pasteText.trim()}
+                className="btn btn-accent"
+                style={{ flex: 1 }}
+              >
+                <SparklesIcon size={16} />
+                {t('upload.autofill')}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {entryMode === 'screenshot' && !extracted && (
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px', textAlign: 'center' }}>
             {t('upload.noScreenshot')}{' '}
-            <button
-              onClick={startManualEntry}
-              className="link-accent"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', padding: 0 }}
-            >
+            <button onClick={startPasteEntry} className="link-accent" style={linkButtonStyle}>
+              {t('upload.pasteInstead')}
+            </button>
+            {' '}{t('common.or')}{' '}
+            <button onClick={startManualEntry} className="link-accent" style={linkButtonStyle}>
               {t('upload.enterManually')}
             </button>
           </p>
@@ -285,7 +352,7 @@ export default function UploadPage() {
                 <CheckCircleIcon size={16} strokeWidth={2.25} />
               </div>
               <h2 style={{ fontWeight: '700', fontSize: '16px', color: 'var(--text-primary)', margin: 0 }}>
-                {manual ? t('upload.jobDetails') : t('upload.confirmDetails')}
+                {entryMode === 'screenshot' ? t('upload.confirmDetails') : t('upload.jobDetails')}
               </h2>
             </div>
 
@@ -302,7 +369,7 @@ export default function UploadPage() {
                       {t(`field.${key}` as TranslationKey)}
                     </label>
                     <input
-                      type={key === 'deadline' ? 'date' : 'text'}
+                      type={DATE_FIELDS.has(key) ? 'date' : 'text'}
                       className="field-input"
                       value={value as string}
                       onChange={(e) => setExtracted({ ...extracted, [key]: e.target.value })}
@@ -321,9 +388,9 @@ export default function UploadPage() {
               {loading ? <span className="spinner" /> : <CheckCircleIcon size={16} />}
               {loading ? t('upload.saving') : t('upload.save')}
             </button>
-            {manual && (
+            {entryMode !== 'screenshot' && (
               <button
-                onClick={() => { setExtracted(null); setManual(false); setError(null) }}
+                onClick={() => { setExtracted(null); setEntryMode('screenshot'); setError(null) }}
                 className="btn btn-ghost"
                 style={{ display: 'block', margin: '12px auto 0', fontSize: '13px' }}
               >
