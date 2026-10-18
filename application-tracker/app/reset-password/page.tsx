@@ -63,7 +63,7 @@ export default function ResetPasswordPage() {
   let content
   if (done) {
     content = (
-      <div style={{ background: 'var(--success-soft)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-sm)', padding: '16px' }}>
+      <div className="fade-in-up" style={{ background: 'var(--success-soft)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-sm)', padding: '16px' }}>
         <p style={{ color: 'var(--success)', fontSize: '14px', margin: 0 }}>
           {t('reset.done')}
         </p>
@@ -109,7 +109,7 @@ export default function ResetPasswordPage() {
           )}
         </div>
 
-        {error && <p style={{ color: 'var(--danger)', fontSize: '13px', marginBottom: '16px' }}>{error}</p>}
+        {error && <p className="fade-in-up" style={{ color: 'var(--danger)', fontSize: '13px', marginBottom: '16px' }}>{error}</p>}
 
         <button
           onClick={handleSubmit}

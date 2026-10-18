@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -8,45 +8,74 @@ import { useLanguage } from '@/lib/language'
 import { useAccount } from '@/lib/account'
 import { errorMessage } from '@/lib/errors'
 import { parsePastedJob } from '@/lib/parseJobText'
-import { EMPTY_JOB, JobFieldValues, blankToNull, toJobFieldValues } from '@/lib/jobFields'
+import { EMPTY_JOB, JOB_FIELDS, JobField, JobFieldValues, blankToNull, toJobFieldValues } from '@/lib/jobFields'
 import { AppHeader } from '@/components/AppHeader'
 import { JobFields } from '@/components/JobFields'
 import { LoadingScreen } from '@/components/LoadingScreen'
 import {
-  ArrowLeftIcon, UploadCloudIcon, SparklesIcon, CheckCircleIcon, AlertCircleIcon,
-  XIcon, ClipboardIcon,
+  UploadCloudIcon, SparklesIcon, CheckCircleIcon, AlertCircleIcon, XIcon, PencilIcon,
 } from '@/lib/icons'
 
-const linkButtonStyle: React.CSSProperties = {
-  background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', padding: 0,
-}
+type Mode = 'screenshot' | 'paste' | 'manual'
+const MODES: Mode[] = ['screenshot', 'paste', 'manual']
 
 const todayISO = () => new Date().toISOString().split('T')[0]
+
+// The fields an extraction actually filled. Date applied is always set to
+// today by us, so it never counts as found.
+function filledFields(values: Partial<JobFieldValues>) {
+  return new Set(JOB_FIELDS.filter(field => field !== 'date_applied' && values[field]?.trim()))
+}
+
+const accentButtonStyle: React.CSSProperties = { width: '100%', minHeight: '46px' }
 
 export default function UploadPage() {
   const router = useRouter()
   const { t } = useLanguage()
   const account = useAccount()
+  const [mode, setMode] = useState<Mode>('screenshot')
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
+  const previewUrl = useRef<string | null>(null)
   const [dragging, setDragging] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [extracted, setExtracted] = useState<JobFieldValues | null>(null)
-  const [entryMode, setEntryMode] = useState<'screenshot' | 'manual' | 'paste'>('screenshot')
+  const [extracting, setExtracting] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [values, setValues] = useState<JobFieldValues>(() => ({ ...EMPTY_JOB, date_applied: todayISO() }))
+  const [found, setFound] = useState<ReadonlySet<JobField>>(new Set())
   const [pasteText, setPasteText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [needsKey, setNeedsKey] = useState(false)
 
-  if (!account) return <LoadingScreen />
+  const showPreview = (url: string | null) => {
+    if (previewUrl.current) URL.revokeObjectURL(previewUrl.current)
+    previewUrl.current = url
+    setPreview(url)
+  }
 
   const processFile = (f: File) => {
-    if (preview) URL.revokeObjectURL(preview)
     setFile(f)
-    setPreview(URL.createObjectURL(f))
-    setExtracted(null)
-    setEntryMode('screenshot')
+    showPreview(URL.createObjectURL(f))
     setError(null)
+    setNeedsKey(false)
   }
+
+  // A pasted image (Ctrl+V / Cmd+V) works the same as a dropped one.
+  const onPasteImage = useEffectEvent((f: File) => processFile(f))
+  useEffect(() => {
+    if (mode !== 'screenshot') return
+    const handlePaste = (e: ClipboardEvent) => {
+      const image = Array.from(e.clipboardData?.files ?? []).find(f => f.type.startsWith('image/'))
+      if (!image) return
+      e.preventDefault()
+      onPasteImage(image)
+    }
+    window.addEventListener('paste', handlePaste)
+    return () => window.removeEventListener('paste', handlePaste)
+  }, [mode])
+
+  if (!account) return <LoadingScreen />
+
+  const defaultStatus = account.settings?.default_status ?? 'applied'
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
@@ -61,35 +90,27 @@ export default function UploadPage() {
   }
 
   const clearFile = () => {
-    if (preview) URL.revokeObjectURL(preview)
     setFile(null)
-    setPreview(null)
-    setExtracted(null)
+    showPreview(null)
   }
 
-  const startManualEntry = () => {
-    setExtracted({ ...EMPTY_JOB, date_applied: todayISO() })
-    setEntryMode('manual')
-    setError(null)
-    setNeedsKey(false)
-  }
-
-  const startPasteEntry = () => {
-    setPasteText('')
-    setEntryMode('paste')
+  const switchMode = (next: Mode) => {
+    setMode(next)
     setError(null)
     setNeedsKey(false)
   }
 
   const handleAutofillFromText = () => {
     if (!pasteText.trim()) return
-    setExtracted({ ...EMPTY_JOB, date_applied: todayISO(), ...parsePastedJob(pasteText) })
+    const parsed = parsePastedJob(pasteText)
+    setValues({ ...EMPTY_JOB, date_applied: values.date_applied || todayISO(), ...parsed })
+    setFound(filledFields(parsed))
     setError(null)
   }
 
   const handleExtract = async () => {
     if (!file) return
-    setLoading(true)
+    setExtracting(true)
     setError(null)
     setNeedsKey(false)
     try {
@@ -104,100 +125,117 @@ export default function UploadPage() {
         headers: { Authorization: `Bearer ${session.access_token}` },
         body: formData
       })
-
       const data = await res.json()
       if (data.error) {
         if (data.needsKey) setNeedsKey(true)
         throw new Error(data.error)
       }
-      setExtracted({ ...toJobFieldValues(data), date_applied: todayISO() })
+      const extracted = toJobFieldValues(data)
+      setValues({ ...extracted, date_applied: values.date_applied || todayISO() })
+      setFound(filledFields(extracted))
     } catch (err) {
       setError(errorMessage(err))
     } finally {
-      setLoading(false)
+      setExtracting(false)
     }
   }
 
   const handleSave = async () => {
-    if (!extracted) return
-    if (!extracted.company.trim() || !extracted.title.trim()) {
+    if (!values.company.trim() || !values.title.trim()) {
       setError(t('upload.requiredFields'))
+      setNeedsKey(false)
       return
     }
-    setLoading(true)
+    setSaving(true)
     setError(null)
     try {
       const { error } = await supabase.from('jobs').insert([{
-        ...blankToNull(extracted),
-        status: account.settings?.default_status ?? 'applied',
+        ...blankToNull(values),
+        status: defaultStatus,
         user_id: account.user.id,
       }])
       if (error) throw error
       router.push('/dashboard')
     } catch (err) {
       setError(errorMessage(err))
-    } finally {
-      setLoading(false)
+      setSaving(false)
     }
   }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      <AppHeader
-        maxWidth="640px"
-        right={
-          <Link href="/dashboard" className="link-accent" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
-            <ArrowLeftIcon size={14} strokeWidth={2.25} />
-            {t('common.backToDashboard').replace('← ', '')}
-          </Link>
-        }
-      />
+      <AppHeader email={account.user.email} />
 
-      <main style={{ maxWidth: '640px', margin: '0 auto', padding: '48px 24px 80px' }}>
-        <div style={{ marginBottom: '28px' }}>
-          <h1 style={{ fontSize: '28px', fontWeight: '800', letterSpacing: '-0.02em', color: 'var(--text-primary)', margin: '0 0 8px' }}>
-            {t('upload.title')}
-          </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: 0, lineHeight: 1.5 }}>
-            {t('upload.subtitle')}
-          </p>
+      <main style={{ maxWidth: '1120px', margin: '0 auto', padding: '32px 24px 80px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: '16px' }}>
+          <div style={{ maxWidth: '560px' }}>
+            <h1 style={{ fontSize: '28px', fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-primary)', margin: 0 }}>
+              {t('upload.title')}
+            </h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px', lineHeight: 1.5 }}>
+              {t('upload.subtitle')}
+            </p>
+          </div>
+          <div role="tablist" aria-label={t('upload.modeLabel')} className="segmented">
+            {MODES.map(value => (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                id={`tab-${value}`}
+                aria-selected={mode === value}
+                aria-controls="source-panel"
+                onClick={() => switchMode(value)}
+              >
+                {t(`upload.mode.${value}`)}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {entryMode === 'screenshot' && !extracted && (
-          <div className="card fade-in-up" style={{ padding: '20px', marginBottom: '16px' }}>
-            {!preview ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', alignItems: 'flex-start' }}>
+
+          <section
+            id="source-panel"
+            role="tabpanel"
+            aria-labelledby={`tab-${mode}`}
+            className="card"
+            style={{ flex: '1 1 340px', minWidth: 0, padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}
+          >
+            {mode === 'screenshot' && !preview && (
               <label
-                className={`dropzone${dragging ? ' dragging' : ''}`}
+                className={`dropzone fade-in-up${dragging ? ' dragging' : ''}`}
                 onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
                 onDragLeave={() => setDragging(false)}
                 onDrop={handleDrop}
                 style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  padding: '48px 24px', textAlign: 'center',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px',
+                  minHeight: '320px', padding: '32px 24px', textAlign: 'center',
                 }}
               >
-                <input type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
-                <div style={{
-                  width: '52px', height: '52px', borderRadius: '14px', background: 'var(--accent-soft)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', color: 'var(--accent)',
+                <input type="file" accept="image/*" onChange={handleFile} className="visually-hidden" />
+                <span style={{
+                  width: '56px', height: '56px', borderRadius: '16px', background: 'var(--accent-soft)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)',
                 }}>
-                  <UploadCloudIcon size={24} strokeWidth={2} />
-                </div>
-                <p style={{ fontWeight: '600', fontSize: '14px', color: 'var(--text-primary)', margin: '0 0 4px' }}>
-                  {t('upload.dropTitle')}
-                </p>
-                <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', margin: 0 }}>{t('upload.dropHint')}</p>
+                  <UploadCloudIcon size={26} strokeWidth={2} />
+                </span>
+                <span style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-primary)' }}>{t('upload.dropTitle')}</span>
+                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{t('upload.dropHint')}</span>
               </label>
-            ) : (
+            )}
+
+            {mode === 'screenshot' && preview && (
               <>
-                <div style={{
+                <div className="fade-in-up" style={{
                   position: 'relative', borderRadius: 'var(--radius-md)', overflow: 'hidden',
-                  border: '1px solid var(--border)', marginBottom: '16px', lineHeight: 0,
+                  border: '1px solid var(--border)', lineHeight: 0,
                 }}>
                   {/* A local blob URL, which next/image can't optimize anyway. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={preview} alt={t('upload.preview')} style={{ width: '100%', display: 'block', maxHeight: '360px', objectFit: 'cover' }} />
+                  <img src={preview} alt={t('upload.preview')} style={{ width: '100%', display: 'block', maxHeight: '420px', objectFit: 'cover', objectPosition: 'top' }} />
                   <button
+                    type="button"
                     onClick={clearFile}
                     className="btn btn-secondary btn-sm"
                     style={{ position: 'absolute', top: '10px', right: '10px', boxShadow: 'var(--shadow-sm)' }}
@@ -206,126 +244,117 @@ export default function UploadPage() {
                     {t('upload.changeImage')}
                   </button>
                 </div>
-                <button
-                  onClick={handleExtract}
-                  disabled={loading}
-                  className="btn btn-accent"
-                  style={{ width: '100%' }}
-                >
-                  {loading ? <span className="spinner" /> : <SparklesIcon size={16} />}
-                  {loading ? t('upload.extracting') : t('upload.extract')}
+                <button type="button" onClick={handleExtract} disabled={extracting} className="btn btn-accent" style={accentButtonStyle}>
+                  {extracting ? <span className="spinner" /> : <SparklesIcon size={16} />}
+                  {extracting ? t('upload.extracting') : found.size ? t('upload.extractAgain') : t('upload.extract')}
                 </button>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                  {t('upload.usesKey')}{' · '}
+                  <Link href="/settings" className="link-accent">{t('upload.manageKey')}</Link>
+                </p>
               </>
             )}
-          </div>
-        )}
 
-        {entryMode === 'paste' && !extracted && (
-          <div className="card fade-in-up" style={{ padding: '20px', marginBottom: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '14px' }}>
-              <div style={{
-                width: '36px', height: '36px', borderRadius: '10px', background: 'var(--accent-soft)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', flexShrink: 0,
-              }}>
-                <ClipboardIcon size={17} strokeWidth={2} />
+            {mode === 'paste' && (
+              <div className="fade-in-up" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label htmlFor="paste-text" style={{ display: 'block', fontWeight: 600, fontSize: '15px', color: 'var(--text-primary)' }}>
+                    {t('upload.pasteTitle')}
+                  </label>
+                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px' }}>{t('upload.pasteHint')}</p>
+                </div>
+                <textarea
+                  id="paste-text"
+                  value={pasteText}
+                  onChange={(e) => setPasteText(e.target.value)}
+                  placeholder={t('upload.pastePlaceholder')}
+                  className="field-input"
+                  rows={11}
+                  style={{ resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.55 }}
+                />
+                <button
+                  type="button"
+                  onClick={handleAutofillFromText}
+                  disabled={!pasteText.trim()}
+                  className="btn btn-accent"
+                  style={accentButtonStyle}
+                >
+                  <SparklesIcon size={16} />
+                  {t('upload.autofill')}
+                </button>
               </div>
-              <div>
-                <p style={{ fontWeight: '600', fontSize: '14px', color: 'var(--text-primary)', margin: '0 0 2px' }}>
-                  {t('upload.pasteTitle')}
-                </p>
-                <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', margin: 0 }}>{t('upload.pasteHint')}</p>
+            )}
+
+            {mode === 'manual' && (
+              <div className="fade-in-up" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '4px' }}>
+                <span style={{
+                  width: '48px', height: '48px', borderRadius: '14px', background: 'var(--surface-hover)', border: '1px solid var(--border)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-body)',
+                }}>
+                  <PencilIcon size={20} />
+                </span>
+                <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>{t('upload.manualTitle')}</h2>
+                <ul style={{ paddingLeft: '18px', color: 'var(--text-body)', fontSize: '14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <li>{t('upload.manualTip1')}</li>
+                  <li>{t('upload.manualTip2')}</li>
+                  <li>{t('upload.manualTip3')}</li>
+                </ul>
               </div>
-            </div>
-            <textarea
-              value={pasteText}
-              onChange={(e) => setPasteText(e.target.value)}
-              placeholder={t('upload.pastePlaceholder')}
-              className="field-input"
-              rows={8}
-              style={{ resize: 'vertical', marginBottom: '14px', fontFamily: 'inherit' }}
-            />
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button type="button" onClick={() => setEntryMode('screenshot')} className="btn btn-secondary">
-                <XIcon size={13} strokeWidth={2.5} />
-              </button>
-              <button
-                type="button"
-                onClick={handleAutofillFromText}
-                disabled={!pasteText.trim()}
-                className="btn btn-accent"
-                style={{ flex: 1 }}
-              >
-                <SparklesIcon size={16} />
-                {t('upload.autofill')}
-              </button>
-            </div>
-          </div>
-        )}
+            )}
+          </section>
 
-        {entryMode === 'screenshot' && !extracted && (
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px', textAlign: 'center' }}>
-            {t('upload.noScreenshot')}{' '}
-            <button onClick={startPasteEntry} className="link-accent" style={linkButtonStyle}>
-              {t('upload.pasteInstead')}
-            </button>
-            {' '}{t('common.or')}{' '}
-            <button onClick={startManualEntry} className="link-accent" style={linkButtonStyle}>
-              {t('upload.enterManually')}
-            </button>
-          </p>
-        )}
-
-        {error && (
-          <div className="card fade-in-up" style={{
-            background: 'var(--danger-soft)', borderColor: 'var(--danger-border)', padding: '14px 16px',
-            marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'flex-start',
-          }}>
-            <AlertCircleIcon size={16} strokeWidth={2} style={{ color: 'var(--danger)', flexShrink: 0, marginTop: '1px' }} />
-            <div>
-              <p style={{ color: 'var(--danger)', fontSize: '13px', margin: 0 }}>{error}</p>
-              {needsKey && (
-                <Link href="/settings" className="link-accent" style={{ fontSize: '13px', color: 'var(--danger)' }}>{t('upload.goToSettings')}</Link>
+          <section aria-labelledby="details-heading" className="card" style={{ flex: '999 1 520px', minWidth: 0 }}>
+            <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px 12px' }}>
+              <h2 id="details-heading" style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginRight: 'auto' }}>
+                {found.size ? t('upload.confirmDetails') : t('upload.jobDetails')}
+              </h2>
+              {found.size > 0 && (
+                <span className="fade-in-up" style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 10px', borderRadius: '999px',
+                  fontSize: '12px', fontWeight: 600, background: 'var(--accent-soft)', color: 'var(--accent)',
+                }}>
+                  <SparklesIcon size={12} strokeWidth={2.25} />
+                  {t('upload.foundCount', { count: found.size })}
+                </span>
               )}
             </div>
-          </div>
-        )}
 
-        {extracted && (
-          <div className="card fade-in-up" style={{ padding: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-              <div style={{
-                width: '32px', height: '32px', borderRadius: '9px', background: 'var(--success-soft)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--success)', flexShrink: 0,
-              }}>
-                <CheckCircleIcon size={16} strokeWidth={2.25} />
-              </div>
-              <h2 style={{ fontWeight: '700', fontSize: '16px', color: 'var(--text-primary)', margin: 0 }}>
-                {entryMode === 'screenshot' ? t('upload.confirmDetails') : t('upload.jobDetails')}
-              </h2>
+            <div style={{ padding: '20px 24px' }}>
+              <JobFields values={values} onChange={setValues} highlighted={found} />
             </div>
 
-            <JobFields values={extracted} onChange={setExtracted} />
-
-            <button
-              onClick={handleSave}
-              disabled={loading}
-              className="btn btn-success"
-              style={{ width: '100%', marginTop: '20px' }}
-            >
-              {loading ? <span className="spinner" /> : <CheckCircleIcon size={16} />}
-              {loading ? t('upload.saving') : t('upload.save')}
-            </button>
-            {entryMode !== 'screenshot' && (
-              <button
-                onClick={() => { setExtracted(null); setEntryMode('screenshot'); setError(null) }}
-                className="btn btn-ghost"
-                style={{ display: 'block', margin: '12px auto 0', fontSize: '13px' }}
-              >
-                {t('upload.useScreenshot')}
-              </button>
+            {error && (
+              <div role="alert" className="fade-in-up" style={{
+                margin: '0 24px 4px', padding: '12px 14px', borderRadius: 'var(--radius-md)',
+                background: 'var(--danger-soft)', border: '1px solid var(--danger-border)',
+                display: 'flex', gap: '10px', alignItems: 'flex-start',
+              }}>
+                <AlertCircleIcon size={16} strokeWidth={2} style={{ color: 'var(--danger)', flexShrink: 0, marginTop: '1px' }} />
+                <div>
+                  <p style={{ color: 'var(--danger)', fontSize: '13px' }}>{error}</p>
+                  {needsKey && (
+                    <Link href="/settings" className="link-accent" style={{ fontSize: '13px', color: 'var(--danger)' }}>{t('upload.goToSettings')}</Link>
+                  )}
+                </div>
+              </div>
             )}
-          </div>
-        )}
+
+            <div style={{ padding: '16px 24px 20px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-secondary)', marginRight: 'auto' }}>
+                {t('upload.savesAs')}{' '}
+                <strong style={{ color: `var(--status-${defaultStatus}-fg)`, fontWeight: 600 }}>{t(`status.${defaultStatus}`)}</strong>
+                {' · '}
+                <Link href="/settings" className="link-accent">{t('upload.changeDefault')}</Link>
+              </span>
+              <Link href="/dashboard" className="btn btn-ghost" style={{ padding: '11px 14px' }}>{t('edit.cancel')}</Link>
+              <button type="button" onClick={handleSave} disabled={saving || extracting} className="btn btn-success">
+                {saving ? <span className="spinner" /> : <CheckCircleIcon size={16} />}
+                {saving ? t('upload.saving') : t('upload.save')}
+              </button>
+            </div>
+          </section>
+
+        </div>
       </main>
     </div>
   )

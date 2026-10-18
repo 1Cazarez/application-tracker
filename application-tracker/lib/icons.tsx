@@ -290,3 +290,75 @@ export function PencilIcon(props: IconProps) {
     </svg>
   )
 }
+
+export function ArrowRightIcon(props: IconProps) {
+  return (
+    <svg {...svgProps(props)}>
+      <line x1="5" y1="12" x2="19" y2="12" />
+      <polyline points="12 5 19 12 12 19" />
+    </svg>
+  )
+}
+
+export function SearchIcon(props: IconProps) {
+  return (
+    <svg {...svgProps(props)}>
+      <circle cx="11" cy="11" r="7" />
+      <line x1="20" y1="20" x2="16.5" y2="16.5" />
+    </svg>
+  )
+}
+
+export function BellIcon(props: IconProps) {
+  return (
+    <svg {...svgProps(props)}>
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+    </svg>
+  )
+}
+
+export function UserIcon(props: IconProps) {
+  return (
+    <svg {...svgProps(props)}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21a8 8 0 0 1 16 0" />
+    </svg>
+  )
+}
+
+export function GlobeIcon(props: IconProps) {
+  return (
+    <svg {...svgProps(props)}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18" />
+      <path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18" />
+    </svg>
+  )
+}
+
+export function LockIcon(props: IconProps) {
+  return (
+    <svg {...svgProps(props)}>
+      <rect x="3" y="11" width="18" height="10" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  )
+}
+
+export function ChartIcon(props: IconProps) {
+  return (
+    <svg {...svgProps(props)}>
+      <path d="M3 3v18h18" />
+      <polyline points="7 15 11 11 14 14 19 8" />
+    </svg>
+  )
+}
+
+export function MinusIcon(props: IconProps) {
+  return (
+    <svg {...svgProps(props)}>
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  )
+}

@@ -11,7 +11,7 @@ import { JobFieldValues, blankToNull, toJobFieldValues } from '@/lib/jobFields'
 import { AppHeader } from '@/components/AppHeader'
 import { JobFields } from '@/components/JobFields'
 import { LoadingScreen } from '@/components/LoadingScreen'
-import { ArrowLeftIcon, CheckCircleIcon, AlertCircleIcon } from '@/lib/icons'
+import { CheckCircleIcon, AlertCircleIcon } from '@/lib/icons'
 
 type LoadedJob = { values: JobFieldValues; originalDeadline: string } | 'not-found'
 
@@ -73,19 +73,11 @@ export default function EditPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      <AppHeader
-        maxWidth="640px"
-        right={
-          <Link href="/dashboard" className="link-accent" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
-            <ArrowLeftIcon size={14} strokeWidth={2.25} />
-            {t('common.backToDashboard').replace('← ', '')}
-          </Link>
-        }
-      />
+      <AppHeader email={account?.user.email} />
 
-      <main style={{ maxWidth: '640px', margin: '0 auto', padding: '48px 24px 80px' }}>
+      <main style={{ maxWidth: '720px', margin: '0 auto', padding: '32px 24px 80px' }}>
         <div style={{ marginBottom: '28px' }}>
-          <h1 style={{ fontSize: '28px', fontWeight: '800', letterSpacing: '-0.02em', color: 'var(--text-primary)', margin: '0 0 8px' }}>
+          <h1 style={{ fontSize: '28px', fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-primary)', margin: '0 0 4px' }}>
             {t('edit.title')}
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: 0, lineHeight: 1.5 }}>

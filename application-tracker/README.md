@@ -33,9 +33,9 @@ A user's choice is saved to `user_settings.language` and mirrored into `localSto
 
 | Route | Purpose |
 | --- | --- |
-| `/` | Redirects to `/dashboard` |
-| `/dashboard` | Application list, status counts, deadline warnings |
-| `/upload` | Screenshot upload and extraction, or manual entry; confirm-and-save |
+| `/` | Landing page: what the app does, how it works, FAQ |
+| `/dashboard` | Stats, pipeline, searchable application table, upcoming deadlines |
+| `/upload` | Screenshot, pasted listing, or manual entry in tabs; confirm-and-save |
 | `/settings` | Gemini key, reminder preferences, default status, language, account |
 | `/login` | Email/password sign in and sign up, plus Google OAuth |
 | `/forgot-password` | Sends a Supabase reset email |

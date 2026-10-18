@@ -37,7 +37,7 @@ export default function ForgotPasswordPage() {
   return (
     <AuthCard title={t('forgot.title')} subtitle={t('forgot.subtitle')}>
       {sent ? (
-        <div style={{ background: 'var(--success-soft)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-sm)', padding: '16px', marginBottom: '16px' }}>
+        <div className="fade-in-up" style={{ background: 'var(--success-soft)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-sm)', padding: '16px', marginBottom: '16px' }}>
           <p style={{ color: 'var(--success)', fontSize: '14px', margin: 0 }}>
             {t('forgot.sentTo', { email })}
           </p>
@@ -56,7 +56,7 @@ export default function ForgotPasswordPage() {
             />
           </div>
 
-          {error && <p style={{ color: 'var(--danger)', fontSize: '13px', marginBottom: '16px' }}>{error}</p>}
+          {error && <p className="fade-in-up" style={{ color: 'var(--danger)', fontSize: '13px', marginBottom: '16px' }}>{error}</p>}
 
           <button
             onClick={handleSubmit}

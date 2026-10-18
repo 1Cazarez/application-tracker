@@ -122,7 +122,7 @@ export default function LoginPage() {
       </div>
 
       {isSignUp && (
-        <div style={{ marginBottom: '16px' }}>
+        <div className="fade-in-up" style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>{t('login.confirmPassword')}</label>
           <input
             type="password"
@@ -140,8 +140,8 @@ export default function LoginPage() {
         </div>
       )}
 
-      {error && <p style={{ color: 'var(--danger)', fontSize: '13px', marginBottom: '16px' }}>{error}</p>}
-      {message && <p style={{ color: 'var(--success)', fontSize: '13px', marginBottom: '16px' }}>{message}</p>}
+      {error && <p className="fade-in-up" style={{ color: 'var(--danger)', fontSize: '13px', marginBottom: '16px' }}>{error}</p>}
+      {message && <p className="fade-in-up" style={{ color: 'var(--success)', fontSize: '13px', marginBottom: '16px' }}>{message}</p>}
 
       <button
         onClick={handleSubmit}

@@ -48,11 +48,11 @@
   --status-applied-bg: #dbeafe;
   --status-applied-fg: #1d4ed8;
   --status-interview-bg: #fef3c7;
-  --status-interview-fg: #d97706;
+  --status-interview-fg: #b45309;
   --status-offer-bg: #dcfce7;
   --status-offer-fg: #15803d;
-  --status-rejected-bg: #fee2e2;
-  --status-rejected-fg: #dc2626;
+  --status-rejected-bg: #f1f5f9;
+  --status-rejected-fg: #475569;
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -62,6 +62,10 @@
   --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
   --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
   --shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.14);
+
+  /* Motion. Mirrored in lib/motion.ts for WAAPI calls. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
 :root[data-theme='dark'] {
@@ -108,8 +112,8 @@
   --status-interview-fg: #fbbf24;
   --status-offer-bg: rgba(74, 222, 128, 0.16);
   --status-offer-fg: #4ade80;
-  --status-rejected-bg: rgba(248, 113, 113, 0.16);
-  --status-rejected-fg: #f87171;
+  --status-rejected-bg: rgba(148, 163, 184, 0.16);
+  --status-rejected-fg: #94a3b8;
 
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -196,7 +200,9 @@ input[type='radio'] {
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
-select:focus-visible {
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -232,7 +238,7 @@ select:focus-visible {
   padding: 11px 18px;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.16s var(--ease-out), box-shadow 0.15s ease, opacity 0.15s ease;
   white-space: nowrap;
   line-height: 1.2;
 }
@@ -252,7 +258,6 @@ select:focus-visible {
 .btn-primary:hover:not(:disabled) {
   background: var(--primary-hover);
   box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
 }
 
 .btn-accent {
@@ -263,7 +268,6 @@ select:focus-visible {
 .btn-accent:hover:not(:disabled) {
   background: var(--accent-hover);
   box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
 }
 
 .btn-success {
@@ -274,7 +278,15 @@ select:focus-visible {
 .btn-success:hover:not(:disabled) {
   background: var(--success-hover);
   box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
+}
+
+/* Touch fires a hover on tap, so the lift is for real pointers only. */
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover:not(:disabled),
+  .btn-accent:hover:not(:disabled),
+  .btn-success:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
 }
 
 .btn-secondary {
@@ -302,6 +314,16 @@ select:focus-visible {
 .btn-sm {
   padding: 7px 12px;
   font-size: 13px;
+}
+
+/* Press feedback. After the hover rules so it wins over the lift. */
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Status pill and the card edge that mirrors it. */
+.status-color {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 /* Form fields */
@@ -360,6 +382,11 @@ select:focus-visible {
   background: var(--accent-soft);
 }
 
+.dropzone:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* Motion */
 
 @keyframes spin {
@@ -391,14 +418,32 @@ select:focus-visible {
 }
 
 .fade-in-up {
-  animation: fadeInUp 0.25s ease;
+  animation: fadeInUp 0.25s var(--ease-out);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Keep the fades, drop the movement. */
+@media (prefers-reduced-motion: reduce) {
+  .fade-in-up {
+    animation-name: fadeIn;
+  }
+
+  .btn:active:not(:disabled),
+  .swatch:active {
+    transform: none;
+  }
 }
 
 /* Accent color picker */
 
 .swatch {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   border: 2px solid var(--surface);
   box-shadow: 0 0 0 1px var(--border-strong);
@@ -407,13 +452,299 @@ select:focus-visible {
   align-items: center;
   justify-content: center;
   color: #fff;
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  transition: box-shadow 0.15s ease, transform 0.16s var(--ease-out);
 }
 
-.swatch:hover {
-  transform: scale(1.08);
+@media (hover: hover) and (pointer: fine) {
+  .swatch:hover {
+    transform: scale(1.08);
+  }
+}
+
+.swatch:active {
+  transform: scale(0.95);
 }
 
 .swatch[aria-checked='true'] {
   box-shadow: 0 0 0 2px var(--text-primary);
+}
+
+.btn-danger-soft {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: var(--danger-border);
+}
+
+.btn-danger-soft:hover:not(:disabled) {
+  border-color: var(--danger);
+}
+
+/* App navigation */
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.nav-link:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.nav-link[aria-current='page'] {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Settings section menu */
+
+.side-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.side-link:hover {
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.anchor-section {
+  scroll-margin-top: 24px;
+}
+
+/* Filter chips and pill choices */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.chip:hover {
+  border-color: var(--border-hover);
+}
+
+.chip[aria-pressed='true'] {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+
+.chip-count {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* Segmented control, for tabs and two-to-three-way choices */
+
+.segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--border);
+}
+
+.segmented > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.segmented > button:hover {
+  color: var(--text-primary);
+}
+
+.segmented > button[aria-selected='true'],
+.segmented > button[aria-checked='true'] {
+  background: var(--surface);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Toggle switch */
+
+.switch {
+  width: 46px;
+  height: 28px;
+  flex-shrink: 0;
+  padding: 3px;
+  border: none;
+  border-radius: 999px;
+  background: var(--border-strong);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.switch-thumb {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+  transition: transform 0.2s var(--ease-out);
+}
+
+.switch[aria-checked='true'] {
+  background: var(--accent);
+}
+
+.switch[aria-checked='true'] .switch-thumb {
+  transform: translateX(18px);
+}
+
+/* Icon-only buttons */
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.icon-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.icon-btn-danger:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* Applications table */
+
+.job-row {
+  border-top: 1px solid var(--border);
+  transition: background-color 0.15s ease;
+}
+
+.job-row:hover {
+  background: var(--surface-hover);
+}
+
+/* Theme preview tiles */
+
+.theme-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-body);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.theme-tile:hover {
+  border-color: var(--border-hover);
+}
+
+.theme-tile[aria-checked='true'] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Landing page FAQ */
+
+.faq {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 22px;
+}
+
+.faq summary {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq summary::after {
+  content: '+';
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.faq[open] summary::after {
+  content: '−';
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }

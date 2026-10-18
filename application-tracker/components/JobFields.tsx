@@ -4,7 +4,7 @@ import { useLanguage } from '@/lib/language'
 import { DATE_FIELDS, JOB_FIELDS, JobField, JobFieldValues } from '@/lib/jobFields'
 import {
   BuildingIcon, BriefcaseIcon, CalendarIcon, CalendarCheckIcon, DollarSignIcon,
-  MapPinIcon, LinkIcon, TagIcon,
+  MapPinIcon, LinkIcon, TagIcon, SparklesIcon,
 } from '@/lib/icons'
 
 const FIELD_ICONS: Record<JobField, typeof BuildingIcon> = {
@@ -18,9 +18,14 @@ const FIELD_ICONS: Record<JobField, typeof BuildingIcon> = {
   job_type: TagIcon,
 }
 
-export function JobFields({ values, onChange }: {
+const REQUIRED: ReadonlySet<JobField> = new Set(['company', 'title'])
+
+// highlighted marks the fields that were filled in for the user (by Gemini or
+// the paste parser), so they know which ones to double-check.
+export function JobFields({ values, onChange, highlighted }: {
   values: JobFieldValues
   onChange: (values: JobFieldValues) => void
+  highlighted?: ReadonlySet<JobField>
 }) {
   const { t } = useLanguage()
 
@@ -28,6 +33,7 @@ export function JobFields({ values, onChange }: {
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
       {JOB_FIELDS.map(field => {
         const Icon = FIELD_ICONS[field]
+        const filled = highlighted?.has(field) ?? false
         return (
           <div key={field} style={{ gridColumn: field === 'url' ? '1 / -1' : undefined }}>
             <label
@@ -39,11 +45,19 @@ export function JobFields({ values, onChange }: {
             >
               <Icon size={13} strokeWidth={2.25} style={{ color: 'var(--text-tertiary)' }} />
               {t(`field.${field}`)}
+              {REQUIRED.has(field) && <span aria-hidden="true" style={{ color: 'var(--danger)' }}>*</span>}
+              {filled && (
+                <span role="img" aria-label={t('upload.filledIn')} title={t('upload.filledIn')} style={{ display: 'flex', color: 'var(--accent)' }}>
+                  <SparklesIcon size={12} strokeWidth={2.25} />
+                </span>
+              )}
             </label>
             <input
               id={`job-field-${field}`}
               type={DATE_FIELDS.has(field) ? 'date' : 'text'}
               className="field-input"
+              required={REQUIRED.has(field)}
+              style={filled ? { background: 'color-mix(in srgb, var(--accent-soft) 45%, var(--surface))' } : undefined}
               value={values[field]}
               onChange={(e) => onChange({ ...values, [field]: e.target.value })}
             />
