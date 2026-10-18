@@ -1,14 +1,13 @@
 'use client'
 
 import { useLanguage } from '@/lib/language'
-import { TranslationKey } from '@/lib/i18n'
-import { DATE_FIELDS } from '@/lib/jobFields'
+import { DATE_FIELDS, JOB_FIELDS, JobField, JobFieldValues } from '@/lib/jobFields'
 import {
   BuildingIcon, BriefcaseIcon, CalendarIcon, CalendarCheckIcon, DollarSignIcon,
   MapPinIcon, LinkIcon, TagIcon,
 } from '@/lib/icons'
 
-const FIELD_ICONS: Record<string, typeof BuildingIcon> = {
+const FIELD_ICONS: Record<JobField, typeof BuildingIcon> = {
   company: BuildingIcon,
   title: BriefcaseIcon,
   date_applied: CalendarCheckIcon,
@@ -20,33 +19,33 @@ const FIELD_ICONS: Record<string, typeof BuildingIcon> = {
 }
 
 export function JobFields({ values, onChange }: {
-  values: Record<string, string>
-  onChange: (values: Record<string, string>) => void
+  values: JobFieldValues
+  onChange: (values: JobFieldValues) => void
 }) {
   const { t } = useLanguage()
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-      {Object.entries(values).map(([key, value]) => {
-        const Icon = FIELD_ICONS[key] ?? TagIcon
+      {JOB_FIELDS.map(field => {
+        const Icon = FIELD_ICONS[field]
         return (
-          <div key={key} style={{ gridColumn: key === 'url' ? '1 / -1' : undefined }}>
+          <div key={field} style={{ gridColumn: field === 'url' ? '1 / -1' : undefined }}>
             <label
-              htmlFor={`job-field-${key}`}
+              htmlFor={`job-field-${field}`}
               style={{
                 fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)',
                 display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px',
               }}
             >
               <Icon size={13} strokeWidth={2.25} style={{ color: 'var(--text-tertiary)' }} />
-              {t(`field.${key}` as TranslationKey)}
+              {t(`field.${field}`)}
             </label>
             <input
-              id={`job-field-${key}`}
-              type={DATE_FIELDS.has(key) ? 'date' : 'text'}
+              id={`job-field-${field}`}
+              type={DATE_FIELDS.has(field) ? 'date' : 'text'}
               className="field-input"
-              value={value}
-              onChange={(e) => onChange({ ...values, [key]: e.target.value })}
+              value={values[field]}
+              onChange={(e) => onChange({ ...values, [field]: e.target.value })}
             />
           </div>
         )

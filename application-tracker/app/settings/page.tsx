@@ -1,16 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useLanguage } from '@/lib/language'
-import { LANGUAGES, LANGUAGE_NAMES, Language, isLanguage } from '@/lib/i18n'
+import { Account, useAccount } from '@/lib/account'
+import { errorMessage } from '@/lib/errors'
+import { LANGUAGES, LANGUAGE_NAMES, Language } from '@/lib/i18n'
+import { STATUSES, Status } from '@/lib/jobFields'
 import { useTheme } from '@/lib/theme'
 import { ACCENTS, ACCENT_SWATCHES, THEME_MODES } from '@/lib/theme-config'
 import { AppHeader } from '@/components/AppHeader'
+import { LoadingScreen } from '@/components/LoadingScreen'
 import { ArrowLeftIcon, LogOutIcon, SunIcon, MoonIcon, MonitorIcon, CheckIcon } from '@/lib/icons'
-
-const STATUSES = ['applied', 'interview', 'offer', 'rejected'] as const
 
 const MODE_ICONS = { system: MonitorIcon, light: SunIcon, dark: MoonIcon }
 
@@ -34,50 +37,26 @@ const helpStyle = {
 }
 
 export default function SettingsPage() {
+  const account = useAccount()
+  if (!account) return <LoadingScreen />
+  return <SettingsForm account={account} />
+}
+
+function SettingsForm({ account }: { account: Account }) {
   const router = useRouter()
   const { t, language, setLanguage } = useLanguage()
   const { mode, accent, setMode, setAccent } = useTheme()
+  const { user, settings } = account
 
-  const [userId, setUserId] = useState<string | null>(null)
-  const [email, setEmail] = useState('')
-  const [geminiKey, setGeminiKey] = useState('')
-  const [remindersEnabled, setRemindersEnabled] = useState(true)
-  const [reminderDays, setReminderDays] = useState(7)
-  const [defaultStatus, setDefaultStatus] = useState<string>('applied')
-  const [loading, setLoading] = useState(true)
+  const [geminiKey, setGeminiKey] = useState(settings?.gemini_api_key ?? '')
+  const [remindersEnabled, setRemindersEnabled] = useState(settings?.reminders_enabled ?? true)
+  const [reminderDays, setReminderDays] = useState(settings?.reminder_days ?? 7)
+  const [defaultStatus, setDefaultStatus] = useState<Status>(settings?.default_status ?? 'applied')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const loadSettings = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/login'); return }
-    setUserId(user.id)
-    setEmail(user.email ?? '')
-
-    const { data } = await supabase
-      .from('user_settings')
-      .select('gemini_api_key, reminders_enabled, reminder_days, default_status, language')
-      .eq('user_id', user.id)
-      .maybeSingle()
-
-    if (data) {
-      if (data.gemini_api_key) setGeminiKey(data.gemini_api_key)
-      if (typeof data.reminders_enabled === 'boolean') setRemindersEnabled(data.reminders_enabled)
-      if (data.reminder_days) setReminderDays(data.reminder_days)
-      if (data.default_status) setDefaultStatus(data.default_status)
-      // The saved language wins over whatever this device had stored.
-      if (isLanguage(data.language) && data.language !== language) setLanguage(data.language)
-    }
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    loadSettings()
-  }, [])
-
   const handleSave = async () => {
-    if (!userId) return
     setSaving(true)
     setError(null)
     setMessage(null)
@@ -85,7 +64,7 @@ export default function SettingsPage() {
       const { error } = await supabase
         .from('user_settings')
         .upsert({
-          user_id: userId,
+          user_id: user.id,
           gemini_api_key: geminiKey.trim() || null,
           reminders_enabled: remindersEnabled,
           reminder_days: reminderDays,
@@ -95,8 +74,8 @@ export default function SettingsPage() {
 
       if (error) throw error
       setMessage(t('settings.saved'))
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(errorMessage(err))
     } finally {
       setSaving(false)
     }
@@ -107,21 +86,15 @@ export default function SettingsPage() {
     router.push('/login')
   }
 
-  if (loading) return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>{t('common.loading')}</p>
-    </div>
-  )
-
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       <AppHeader
         maxWidth="640px"
         right={
-          <a href="/dashboard" className="link-accent" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+          <Link href="/dashboard" className="link-accent" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
             <ArrowLeftIcon size={14} strokeWidth={2.25} />
             {t('common.backToDashboard').replace('← ', '')}
-          </a>
+          </Link>
         }
       />
 
@@ -183,7 +156,7 @@ export default function SettingsPage() {
           </label>
           <select
             value={defaultStatus}
-            onChange={(e) => setDefaultStatus(e.target.value)}
+            onChange={(e) => setDefaultStatus(e.target.value as Status)}
             className="field-input"
             style={{ maxWidth: '200px' }}
           >
@@ -276,12 +249,12 @@ export default function SettingsPage() {
         <div className="card" style={cardStyle}>
           <h2 style={headingStyle}>{t('settings.accountHeading')}</h2>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-            {t('settings.signedInAs')} <strong style={{ color: 'var(--text-body)' }}>{email}</strong>
+            {t('settings.signedInAs')} <strong style={{ color: 'var(--text-body)' }}>{user.email}</strong>
           </p>
           <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-            <a href="/forgot-password" className="link-accent" style={{ fontSize: '14px' }}>
+            <Link href="/forgot-password" className="link-accent" style={{ fontSize: '14px' }}>
               {t('settings.changePassword')}
-            </a>
+            </Link>
             <button
               onClick={handleSignOut}
               style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}

@@ -1,9 +1,10 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo } from 'react'
 import { Language, TranslationKey, isLanguage, translate } from './i18n'
+import { createStoredSetting, useStoredSetting } from './storedSetting'
 
-const STORAGE_KEY = 'app-language'
+const storedLanguage = createStoredSetting<Language>('app-language', isLanguage, 'en')
 
 type LanguageContextValue = {
   language: Language
@@ -14,36 +15,20 @@ type LanguageContextValue = {
 const LanguageContext = createContext<LanguageContextValue | null>(null)
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  // Always start on 'en' so the server and client render the same markup, then
-  // switch once localStorage is readable.
-  const [language, setLanguageState] = useState<Language>('en')
+  const language = useStoredSetting(storedLanguage)
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (isLanguage(stored)) {
-      setLanguageState(stored)
-      document.documentElement.lang = stored
-    }
-  }, [])
-
-  const setLanguage = useCallback((next: Language) => {
-    setLanguageState(next)
-    document.documentElement.lang = next
-    try {
-      localStorage.setItem(STORAGE_KEY, next)
-    } catch {
-      // Private browsing or blocked storage: the choice just won't persist.
-    }
-  }, [])
+    document.documentElement.lang = language
+  }, [language])
 
   const value = useMemo(
     () => ({
       language,
-      setLanguage,
+      setLanguage: storedLanguage.set,
       t: (key: TranslationKey, params?: Record<string, string | number>) =>
         translate(language, key, params),
     }),
-    [language, setLanguage]
+    [language]
   )
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>

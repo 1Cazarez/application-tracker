@@ -2,9 +2,18 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useLanguage } from '@/lib/language'
-import { BriefcaseIcon } from '@/lib/icons'
+import { errorMessage } from '@/lib/errors'
+import { AuthCard } from '@/components/AuthCard'
+
+const labelStyle = {
+  fontSize: '13px',
+  color: 'var(--text-body)',
+  display: 'block',
+  marginBottom: '6px',
+}
 
 export default function LoginPage() {
   const router = useRouter()
@@ -42,8 +51,8 @@ export default function LoginPage() {
         if (error) throw error
         router.push('/dashboard')
       }
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(errorMessage(err))
     } finally {
       setLoading(false)
     }
@@ -52,135 +61,116 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/dashboard`
-      }
+      options: { redirectTo: `${window.location.origin}/dashboard` },
     })
   }
 
-  const labelStyle = {
-    fontSize: '13px',
-    color: 'var(--text-body)',
-    display: 'block',
-    marginBottom: '6px'
+  const toggleMode = () => {
+    setIsSignUp(!isSignUp)
+    setError(null)
+    setConfirmPassword('')
   }
 
+  let submitLabel = isSignUp ? t('login.createAccount') : t('login.signIn')
+  if (loading) submitLabel = t('common.loading')
+
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
-        <span style={{
-          width: '34px', height: '34px', borderRadius: '10px', background: 'var(--primary)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--on-primary)', flexShrink: 0,
-        }}>
-          <BriefcaseIcon size={17} strokeWidth={2.25} />
-        </span>
-        <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
-          Application Tracker
-        </span>
+    <AuthCard
+      title={isSignUp ? t('login.createAccount') : t('login.welcomeBack')}
+      subtitle={isSignUp ? t('login.subtitleSignUp') : t('login.subtitleSignIn')}
+    >
+      <button
+        onClick={handleGoogleSignIn}
+        className="btn btn-secondary"
+        style={{ width: '100%', marginBottom: '16px' }}
+      >
+        <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        </svg>
+        {t('login.continueWithGoogle')}
+      </button>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+        <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+        <span style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>{t('login.or')}</span>
+        <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
       </div>
 
-      <div className="card fade-in-up" style={{ padding: '40px', width: '100%', maxWidth: '400px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px' }}>
-          {isSignUp ? t('login.createAccount') : t('login.welcomeBack')}
-        </h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px' }}>
-          {isSignUp ? t('login.subtitleSignUp') : t('login.subtitleSignIn')}
-        </p>
+      <div style={{ marginBottom: '16px' }}>
+        <label style={labelStyle}>{t('common.email')}</label>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@email.com"
+          className="field-input"
+        />
+      </div>
 
-        {/* Google button */}
-        <button
-          onClick={handleGoogleSignIn}
-          className="btn btn-secondary"
-          style={{ width: '100%', marginBottom: '16px' }}
-        >
-          <svg width="18" height="18" viewBox="0 0 48 48">
-            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-          </svg>
-          {t('login.continueWithGoogle')}
-        </button>
+      <div style={{ marginBottom: '16px' }}>
+        <label style={labelStyle}>{t('common.password')}</label>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="••••••••"
+          className="field-input"
+        />
+      </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-          <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
-          <span style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>{t('login.or')}</span>
-          <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
-        </div>
-
+      {isSignUp && (
         <div style={{ marginBottom: '16px' }}>
-          <label style={labelStyle}>{t('common.email')}</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@email.com"
-            className="field-input"
-          />
-        </div>
-
-        <div style={{ marginBottom: '16px' }}>
-          <label style={labelStyle}>{t('common.password')}</label>
+          <label style={labelStyle}>{t('login.confirmPassword')}</label>
           <input
             type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="••••••••"
             className="field-input"
+            style={{
+              borderColor: confirmPassword && password !== confirmPassword ? 'var(--danger)' : undefined
+            }}
           />
+          {confirmPassword && password !== confirmPassword && (
+            <p style={{ color: 'var(--danger)', fontSize: '12px', marginTop: '4px' }}>{t('login.passwordsDoNotMatch')}</p>
+          )}
         </div>
+      )}
 
-        {isSignUp && (
-          <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>{t('login.confirmPassword')}</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="••••••••"
-              className="field-input"
-              style={{
-                borderColor: confirmPassword && password !== confirmPassword ? 'var(--danger)' : undefined
-              }}
-            />
-            {confirmPassword && password !== confirmPassword && (
-              <p style={{ color: 'var(--danger)', fontSize: '12px', marginTop: '4px' }}>{t('login.passwordsDoNotMatch')}</p>
-            )}
-          </div>
-        )}
+      {error && <p style={{ color: 'var(--danger)', fontSize: '13px', marginBottom: '16px' }}>{error}</p>}
+      {message && <p style={{ color: 'var(--success)', fontSize: '13px', marginBottom: '16px' }}>{message}</p>}
 
-        {error && <p style={{ color: 'var(--danger)', fontSize: '13px', marginBottom: '16px' }}>{error}</p>}
-        {message && <p style={{ color: 'var(--success)', fontSize: '13px', marginBottom: '16px' }}>{message}</p>}
+      <button
+        onClick={handleSubmit}
+        disabled={loading}
+        className="btn btn-primary"
+        style={{ width: '100%' }}
+      >
+        {loading && <span className="spinner" />}
+        {submitLabel}
+      </button>
 
-        <button
-          onClick={handleSubmit}
-          disabled={loading}
-          className="btn btn-primary"
-          style={{ width: '100%' }}
-        >
-          {loading && <span className="spinner" />}
-          {loading ? t('common.loading') : isSignUp ? t('login.createAccount') : t('login.signIn')}
-        </button>
-
-        {!isSignUp && (
-          <p style={{ textAlign: 'center', fontSize: '13px', marginTop: '16px' }}>
-            <a href="/forgot-password" style={{ color: 'var(--text-secondary)' }}>
-              {t('login.forgotPassword')}
-            </a>
-          </p>
-        )}
-
-        <p style={{ textAlign: 'center', fontSize: '13px', color: 'var(--text-secondary)', marginTop: '16px' }}>
-          {isSignUp ? t('login.haveAccount') : t('login.noAccount')}{' '}
-          <button
-            onClick={() => { setIsSignUp(!isSignUp); setError(null); setConfirmPassword('') }}
-            className="link-accent"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px' }}
-          >
-            {isSignUp ? t('login.signIn') : t('login.signUp')}
-          </button>
+      {!isSignUp && (
+        <p style={{ textAlign: 'center', fontSize: '13px', marginTop: '16px' }}>
+          <Link href="/forgot-password" style={{ color: 'var(--text-secondary)' }}>
+            {t('login.forgotPassword')}
+          </Link>
         </p>
-      </div>
-    </div>
+      )}
+
+      <p style={{ textAlign: 'center', fontSize: '13px', color: 'var(--text-secondary)', marginTop: '16px' }}>
+        {isSignUp ? t('login.haveAccount') : t('login.noAccount')}{' '}
+        <button
+          onClick={toggleMode}
+          className="link-accent"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px' }}
+        >
+          {isSignUp ? t('login.signIn') : t('login.signUp')}
+        </button>
+      </p>
+    </AuthCard>
   )
 }

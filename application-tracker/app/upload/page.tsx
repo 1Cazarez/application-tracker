@@ -1,14 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useLanguage } from '@/lib/language'
-import { isLanguage } from '@/lib/i18n'
+import { useAccount } from '@/lib/account'
+import { errorMessage } from '@/lib/errors'
 import { parsePastedJob } from '@/lib/parseJobText'
-import { EMPTY_JOB, blankToNull } from '@/lib/jobFields'
+import { EMPTY_JOB, JobFieldValues, blankToNull, toJobFieldValues } from '@/lib/jobFields'
 import { AppHeader } from '@/components/AppHeader'
 import { JobFields } from '@/components/JobFields'
+import { LoadingScreen } from '@/components/LoadingScreen'
 import {
   ArrowLeftIcon, UploadCloudIcon, SparklesIcon, CheckCircleIcon, AlertCircleIcon,
   XIcon, ClipboardIcon,
@@ -22,43 +25,22 @@ const todayISO = () => new Date().toISOString().split('T')[0]
 
 export default function UploadPage() {
   const router = useRouter()
-  const { t, language, setLanguage } = useLanguage()
-  const [userId, setUserId] = useState<string | null>(null)
-  const [defaultStatus, setDefaultStatus] = useState('applied')
-  const [checkingAuth, setCheckingAuth] = useState(true)
+  const { t } = useLanguage()
+  const account = useAccount()
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [extracted, setExtracted] = useState<any>(null)
+  const [extracted, setExtracted] = useState<JobFieldValues | null>(null)
   const [entryMode, setEntryMode] = useState<'screenshot' | 'manual' | 'paste'>('screenshot')
   const [pasteText, setPasteText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [needsKey, setNeedsKey] = useState(false)
 
-  const checkAuth = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/login'); return }
-    setUserId(user.id)
-
-    const { data: settings } = await supabase
-      .from('user_settings')
-      .select('default_status, language')
-      .eq('user_id', user.id)
-      .maybeSingle()
-    if (settings?.default_status) setDefaultStatus(settings.default_status)
-    if (isLanguage(settings?.language) && settings.language !== language) {
-      setLanguage(settings.language)
-    }
-
-    setCheckingAuth(false)
-  }
-
-  useEffect(() => {
-    checkAuth()
-  }, [])
+  if (!account) return <LoadingScreen />
 
   const processFile = (f: File) => {
+    if (preview) URL.revokeObjectURL(preview)
     setFile(f)
     setPreview(URL.createObjectURL(f))
     setExtracted(null)
@@ -79,6 +61,7 @@ export default function UploadPage() {
   }
 
   const clearFile = () => {
+    if (preview) URL.revokeObjectURL(preview)
     setFile(null)
     setPreview(null)
     setExtracted(null)
@@ -127,17 +110,17 @@ export default function UploadPage() {
         if (data.needsKey) setNeedsKey(true)
         throw new Error(data.error)
       }
-      setExtracted({ ...EMPTY_JOB, date_applied: todayISO(), ...data })
-    } catch (err: any) {
-      setError(err.message)
+      setExtracted({ ...toJobFieldValues(data), date_applied: todayISO() })
+    } catch (err) {
+      setError(errorMessage(err))
     } finally {
       setLoading(false)
     }
   }
 
   const handleSave = async () => {
-    if (!extracted || !userId) return
-    if (!extracted.company?.trim() || !extracted.title?.trim()) {
+    if (!extracted) return
+    if (!extracted.company.trim() || !extracted.title.trim()) {
       setError(t('upload.requiredFields'))
       return
     }
@@ -146,33 +129,27 @@ export default function UploadPage() {
     try {
       const { error } = await supabase.from('jobs').insert([{
         ...blankToNull(extracted),
-        status: defaultStatus,
-        user_id: userId,
+        status: account.settings?.default_status ?? 'applied',
+        user_id: account.user.id,
       }])
       if (error) throw error
       router.push('/dashboard')
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(errorMessage(err))
     } finally {
       setLoading(false)
     }
   }
-
-  if (checkingAuth) return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>{t('common.loading')}</p>
-    </div>
-  )
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       <AppHeader
         maxWidth="640px"
         right={
-          <a href="/dashboard" className="link-accent" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+          <Link href="/dashboard" className="link-accent" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
             <ArrowLeftIcon size={14} strokeWidth={2.25} />
             {t('common.backToDashboard').replace('← ', '')}
-          </a>
+          </Link>
         }
       />
 
@@ -217,6 +194,8 @@ export default function UploadPage() {
                   position: 'relative', borderRadius: 'var(--radius-md)', overflow: 'hidden',
                   border: '1px solid var(--border)', marginBottom: '16px', lineHeight: 0,
                 }}>
+                  {/* A local blob URL, which next/image can't optimize anyway. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={preview} alt={t('upload.preview')} style={{ width: '100%', display: 'block', maxHeight: '360px', objectFit: 'cover' }} />
                   <button
                     onClick={clearFile}
@@ -305,7 +284,7 @@ export default function UploadPage() {
             <div>
               <p style={{ color: 'var(--danger)', fontSize: '13px', margin: 0 }}>{error}</p>
               {needsKey && (
-                <a href="/settings" className="link-accent" style={{ fontSize: '13px', color: 'var(--danger)' }}>{t('upload.goToSettings')}</a>
+                <Link href="/settings" className="link-accent" style={{ fontSize: '13px', color: 'var(--danger)' }}>{t('upload.goToSettings')}</Link>
               )}
             </div>
           </div>

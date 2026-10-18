@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { timingSafeEqual } from 'node:crypto'
+import { Resend } from 'resend'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { Language, isLanguage, translate } from '@/lib/i18n'
-import { Resend } from 'resend'
+import type { Job } from '@/lib/jobFields'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -11,14 +12,7 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 const MAX_LEAD_DAYS = 30
 const DEFAULT_LEAD_DAYS = 7
 
-type Job = {
-  id: string
-  user_id: string | null
-  company: string
-  title: string
-  deadline: string
-  status: string
-}
+type DueJob = Pick<Job, 'id' | 'user_id' | 'company' | 'title' | 'status'> & { deadline: string }
 
 type Preferences = {
   remindersEnabled: boolean
@@ -50,16 +44,30 @@ function daysFromToday(days: number) {
   return date.toISOString().split('T')[0]
 }
 
-function buildEmail(jobs: Job[], language: Language, days: number) {
+// Company and title come from user input and model output, so they're
+// escaped before going into the email's HTML.
+function escapeHtml(text: string) {
+  return text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
+function buildEmail(jobs: DueJob[], language: Language, days: number) {
   const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) =>
     translate(language, key, params)
 
+  const cell = 'padding: 12px; border-bottom: 1px solid #e5e7eb;'
+  const header = 'padding: 12px; text-align: left; font-size: 12px; color: #6b7280;'
+
   const rows = jobs.map(job => `
       <tr>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${job.company}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${job.title}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #dc2626; font-weight: 600;">${job.deadline}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${t(`status.${job.status}` as 'status.applied')}</td>
+        <td style="${cell}">${escapeHtml(job.company)}</td>
+        <td style="${cell}">${escapeHtml(job.title)}</td>
+        <td style="${cell} color: #dc2626; font-weight: 600;">${job.deadline}</td>
+        <td style="${cell}">${t(`status.${job.status}`)}</td>
       </tr>
     `).join('')
 
@@ -74,10 +82,10 @@ function buildEmail(jobs: Job[], language: Language, days: number) {
           <table style="width: 100%; border-collapse: collapse; margin-top: 24px;">
             <thead>
               <tr style="background: #f9fafb;">
-                <th style="padding: 12px; text-align: left; font-size: 12px; color: #6b7280;">${t('email.company')}</th>
-                <th style="padding: 12px; text-align: left; font-size: 12px; color: #6b7280;">${t('email.role')}</th>
-                <th style="padding: 12px; text-align: left; font-size: 12px; color: #6b7280;">${t('email.deadline')}</th>
-                <th style="padding: 12px; text-align: left; font-size: 12px; color: #6b7280;">${t('email.status')}</th>
+                <th style="${header}">${t('email.company')}</th>
+                <th style="${header}">${t('email.role')}</th>
+                <th style="${header}">${t('email.deadline')}</th>
+                <th style="${header}">${t('email.status')}</th>
               </tr>
             </thead>
             <tbody>${rows}</tbody>
@@ -120,11 +128,11 @@ export async function GET(req: NextRequest) {
   try {
     const { data: jobs, error } = await supabaseAdmin
       .from('jobs')
-      .select('*')
+      .select('id, user_id, company, title, deadline, status')
       .gte('deadline', daysFromToday(0))
       .lte('deadline', daysFromToday(MAX_LEAD_DAYS))
       .eq('reminder_sent', false)
-      .not('status', 'eq', 'rejected')
+      .neq('status', 'rejected')
 
     if (error) throw error
     if (!jobs || jobs.length === 0) {
@@ -133,12 +141,11 @@ export async function GET(req: NextRequest) {
 
     // Each owner gets their own digest; rows predating user ownership fall back
     // to REMINDER_EMAIL so they aren't silently dropped.
-    const byOwner = new Map<string | null, Job[]>()
-    for (const job of jobs as Job[]) {
-      const owner = job.user_id ?? null
-      const existing = byOwner.get(owner)
+    const byOwner = new Map<string | null, DueJob[]>()
+    for (const job of jobs as DueJob[]) {
+      const existing = byOwner.get(job.user_id)
       if (existing) existing.push(job)
-      else byOwner.set(owner, [job])
+      else byOwner.set(job.user_id, [job])
     }
 
     const fallbackEmail = process.env.REMINDER_EMAIL ?? null
@@ -174,7 +181,7 @@ export async function GET(req: NextRequest) {
         from: 'Application Tracker <onboarding@resend.dev>',
         to: toEmail,
         subject: `⚠️ ${subject}`,
-        html: buildEmail(dueJobs, preferences.language, preferences.reminderDays)
+        html: buildEmail(dueJobs, preferences.language, preferences.reminderDays),
       })
 
       if (sendError) {
@@ -186,7 +193,7 @@ export async function GET(req: NextRequest) {
       await supabaseAdmin
         .from('jobs')
         .update({ reminder_sent: true })
-        .in('id', dueJobs.map(j => j.id))
+        .in('id', dueJobs.map(job => job.id))
 
       sentJobs += dueJobs.length
       recipients += 1
@@ -194,7 +201,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       message: `Sent reminders for ${sentJobs} jobs to ${recipients} recipients`,
-      ...(skipped.length > 0 && { skipped })
+      ...(skipped.length > 0 && { skipped }),
     })
   } catch (error) {
     console.error('Reminder error:', error)

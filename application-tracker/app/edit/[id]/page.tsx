@@ -5,59 +5,51 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useLanguage } from '@/lib/language'
-import { isLanguage } from '@/lib/i18n'
-import { EMPTY_JOB, blankToNull } from '@/lib/jobFields'
+import { useAccount } from '@/lib/account'
+import { errorMessage } from '@/lib/errors'
+import { JobFieldValues, blankToNull, toJobFieldValues } from '@/lib/jobFields'
 import { AppHeader } from '@/components/AppHeader'
 import { JobFields } from '@/components/JobFields'
+import { LoadingScreen } from '@/components/LoadingScreen'
 import { ArrowLeftIcon, CheckCircleIcon, AlertCircleIcon } from '@/lib/icons'
+
+type LoadedJob = { values: JobFieldValues; originalDeadline: string } | 'not-found'
 
 export default function EditPage() {
   const router = useRouter()
   const { id } = useParams<{ id: string }>()
-  const { t, language, setLanguage } = useLanguage()
-  const [values, setValues] = useState<Record<string, string> | null>(null)
-  const [originalDeadline, setOriginalDeadline] = useState('')
-  const [loading, setLoading] = useState(true)
+  const { t } = useLanguage()
+  const account = useAccount()
+  const [loaded, setLoaded] = useState<LoadedJob | null>(null)
   const [saving, setSaving] = useState(false)
-  const [notFound, setNotFound] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const loadJob = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/login'); return }
-
-    const { data: settings } = await supabase
-      .from('user_settings')
-      .select('language')
-      .eq('user_id', user.id)
-      .maybeSingle()
-    if (isLanguage(settings?.language) && settings.language !== language) {
-      setLanguage(settings.language)
-    }
-
-    const { data: job } = await supabase
+  useEffect(() => {
+    if (!account) return
+    supabase
       .from('jobs')
       .select('*')
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', account.user.id)
       .maybeSingle()
+      .then(({ data: job }) => {
+        setLoaded(job
+          ? { values: toJobFieldValues(job), originalDeadline: job.deadline ?? '' }
+          : 'not-found')
+      })
+  }, [account, id])
 
-    if (job) {
-      setValues(Object.fromEntries(Object.keys(EMPTY_JOB).map(key => [key, job[key] ?? ''])))
-      setOriginalDeadline(job.deadline ?? '')
-    } else {
-      setNotFound(true)
-    }
-    setLoading(false)
+  if (!loaded) return <LoadingScreen />
+
+  const values = loaded === 'not-found' ? null : loaded.values
+
+  const setValues = (next: JobFieldValues) => {
+    if (loaded !== 'not-found') setLoaded({ ...loaded, values: next })
   }
 
-  useEffect(() => {
-    loadJob()
-  }, [])
-
   const handleSave = async () => {
-    if (!values) return
-    if (!values.company.trim() || !values.title.trim()) {
+    if (loaded === 'not-found') return
+    if (!loaded.values.company.trim() || !loaded.values.title.trim()) {
       setError(t('upload.requiredFields'))
       return
     }
@@ -66,24 +58,18 @@ export default function EditPage() {
     try {
       // The reminder job skips rows already marked sent, so a moved deadline
       // needs the flag cleared or its new date would never get a reminder.
-      const deadlineChanged = values.deadline !== originalDeadline
+      const deadlineChanged = loaded.values.deadline !== loaded.originalDeadline
       const { error } = await supabase
         .from('jobs')
-        .update({ ...blankToNull(values), ...(deadlineChanged && { reminder_sent: false }) })
+        .update({ ...blankToNull(loaded.values), ...(deadlineChanged && { reminder_sent: false }) })
         .eq('id', id)
       if (error) throw error
       router.push('/dashboard')
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(errorMessage(err))
       setSaving(false)
     }
   }
-
-  if (loading) return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>{t('common.loading')}</p>
-    </div>
-  )
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
@@ -107,7 +93,7 @@ export default function EditPage() {
           </p>
         </div>
 
-        {notFound && (
+        {loaded === 'not-found' && (
           <div className="card" style={{ padding: '40px 32px', textAlign: 'center' }}>
             <p style={{ color: 'var(--text-secondary)', fontSize: '15px', marginBottom: '12px' }}>{t('edit.notFound')}</p>
             <Link href="/dashboard" className="link-accent" style={{ fontSize: '14px' }}>{t('common.backToDashboard')}</Link>

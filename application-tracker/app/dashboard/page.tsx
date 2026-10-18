@@ -4,17 +4,22 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useLanguage } from '@/lib/language'
-import { isLanguage } from '@/lib/i18n'
+import { useAccount } from '@/lib/account'
+import { Job, STATUSES, Status } from '@/lib/jobFields'
 import Link from 'next/link'
 import { AppHeader } from '@/components/AppHeader'
 import { CompanyLogo } from '@/components/CompanyLogo'
+import { LoadingScreen } from '@/components/LoadingScreen'
 import {
   PlusIcon, SettingsIcon, LogOutIcon, DollarSignIcon, MapPinIcon, BriefcaseIcon,
   CalendarIcon, CalendarCheckIcon, AlertTriangleIcon, ExternalLinkIcon, Trash2Icon, PencilIcon,
 } from '@/lib/icons'
 
-const STATUSES = ['applied', 'interview', 'offer', 'rejected'] as const
-type Status = (typeof STATUSES)[number]
+const DAY_MS = 1000 * 60 * 60 * 24
+
+function daysUntil(deadline: string) {
+  return Math.ceil((new Date(deadline).getTime() - Date.now()) / DAY_MS)
+}
 
 const STATUS_STYLES: Record<Status, { background: string; color: string }> = {
   applied:   { background: 'var(--status-applied-bg)', color: 'var(--status-applied-fg)' },
@@ -25,45 +30,28 @@ const STATUS_STYLES: Record<Status, { background: string; color: string }> = {
 
 export default function Dashboard() {
   const router = useRouter()
-  const { t, language, setLanguage } = useLanguage()
-  const [jobs, setJobs] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const { t } = useLanguage()
+  const account = useAccount()
+  const [jobs, setJobs] = useState<Job[] | null>(null)
 
   useEffect(() => {
-    checkAuthAndFetch()
-  }, [])
-
-  const checkAuthAndFetch = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/login'); return }
-
-    // Follow the account's saved language, so it carries across devices.
-    const { data: settings } = await supabase
-      .from('user_settings')
-      .select('language')
-      .eq('user_id', user.id)
-      .maybeSingle()
-    if (isLanguage(settings?.language) && settings.language !== language) {
-      setLanguage(settings.language)
-    }
-
-    const { data, error } = await supabase
+    if (!account) return
+    supabase
       .from('jobs')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', account.user.id)
       .order('created_at', { ascending: false })
-    if (!error && data) setJobs(data)
-    setLoading(false)
-  }
+      .then(({ data }) => setJobs(data ?? []))
+  }, [account])
 
-  const updateStatus = async (id: string, status: string) => {
+  const updateStatus = async (id: string, status: Status) => {
     await supabase.from('jobs').update({ status }).eq('id', id)
-    setJobs(jobs.map(j => j.id === id ? { ...j, status } : j))
+    setJobs(current => current && current.map(job => job.id === id ? { ...job, status } : job))
   }
 
   const deleteJob = async (id: string) => {
     await supabase.from('jobs').delete().eq('id', id)
-    setJobs(jobs.filter(j => j.id !== id))
+    setJobs(current => current && current.filter(job => job.id !== id))
   }
 
   const handleSignOut = async () => {
@@ -71,16 +59,7 @@ export default function Dashboard() {
     router.push('/login')
   }
 
-  const getDaysUntil = (deadline: string) => {
-    if (!deadline) return null
-    return Math.ceil((new Date(deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-  }
-
-  if (loading) return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>{t('common.loading')}</p>
-    </div>
-  )
+  if (!jobs) return <LoadingScreen />
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
@@ -140,8 +119,8 @@ export default function Dashboard() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {jobs.map(job => {
-              const days = getDaysUntil(job.deadline)
-              const status = STATUS_STYLES[job.status as Status] ?? STATUS_STYLES.applied
+              const days = job.deadline ? daysUntil(job.deadline) : null
+              const status = STATUS_STYLES[job.status] ?? STATUS_STYLES.applied
               const urgent = days !== null && days <= 3
               return (
                 <div key={job.id} className="card card-interactive" style={{
@@ -189,7 +168,7 @@ export default function Dashboard() {
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
                       <select
                         value={job.status}
-                        onChange={(e) => updateStatus(job.id, e.target.value)}
+                        onChange={(e) => updateStatus(job.id, e.target.value as Status)}
                         style={{
                           background: status.background, color: status.color,
                           border: 'none', borderRadius: '20px', padding: '4px 10px',
