@@ -50,10 +50,10 @@ const PREVIEW_JOBS: { company: string; title: string; status: Status }[] = [
   { company: 'Contoso', title: 'Product Engineer', status: 'interview' },
   { company: 'Lumen Labs', title: 'Software Engineer II', status: 'offer' },
   { company: 'Northwind', title: 'Frontend Engineer', status: 'applied' },
-  { company: 'Fabrikam', title: 'Full-Stack Developer', status: 'applied' },
+  { company: 'Fabrikam', title: 'Full-Stack Developer', status: 'saved' },
 ]
 
-const PREVIEW_PIPELINE: Record<Status, number> = { applied: 14, interview: 6, offer: 1, rejected: 3 }
+const PREVIEW_PIPELINE: Record<Status, number> = { saved: 4, applied: 14, interview: 6, offer: 1, rejected: 3 }
 
 const wrap: React.CSSProperties = { maxWidth: '1160px', margin: '0 auto', padding: '0 24px' }
 const eyebrowStyle: React.CSSProperties = { color: 'var(--accent)', fontWeight: 600, fontSize: '14px', marginBottom: '8px' }

@@ -45,6 +45,8 @@
 
   --info: #2563eb;
 
+  --status-saved-bg: #f3e8ff;
+  --status-saved-fg: #7e22ce;
   --status-applied-bg: #dbeafe;
   --status-applied-fg: #1d4ed8;
   --status-interview-bg: #fef3c7;
@@ -106,6 +108,8 @@
 
   --info: #60a5fa;
 
+  --status-saved-bg: rgba(192, 132, 252, 0.16);
+  --status-saved-fg: #c084fc;
   --status-applied-bg: rgba(96, 165, 250, 0.16);
   --status-applied-fg: #60a5fa;
   --status-interview-bg: rgba(251, 191, 36, 0.16);
