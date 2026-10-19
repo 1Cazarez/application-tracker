@@ -1,15 +1,15 @@
 # Application Tracker
 
-Track job applications without typing them in. Screenshot a job listing, upload it, and Gemini pulls out the company, role, deadline, pay, and location so you can save it to a dashboard in a couple of clicks. A daily cron emails you when a deadline is less than a week away.
+Track job applications without typing them in. Screenshot a job listing, upload it, and Gemini pulls out the company, role, deadline, pay, and location so you can save it to a dashboard in a couple of clicks. A daily cron emails you before a saved job's deadline, and lets you know once applications close on the jobs you applied to.
 
 ## How it works
 
 1. **Upload** — On `/upload` you pick a screenshot of a job posting. (Or skip straight to step 3 and type the details in by hand.)
 2. **Extract** — The image is POSTed to `/api/extract`, which sends it to Gemini 2.5 Flash with a prompt asking for a strict JSON object (company, title, deadline, pay, location, url, job_type).
 3. **Confirm** — Every extracted field renders as an editable input, so you fix whatever the model got wrong before committing it.
-4. **Save** — The row lands in the Supabase `jobs` table with status `applied`.
-5. **Track** — `/dashboard` lists your applications with counts per status, and flags any deadline within 3 days in red. Status is a dropdown on each card: applied → interview → offer → rejected.
-6. **Remind** — A Vercel cron hits `/api/reminders` daily at 13:00 UTC. For each user who has reminders on, it finds their non-rejected jobs falling inside their chosen lead time that haven't been mailed yet, sends one digest via Resend in their language, and marks them `reminder_sent`.
+4. **Save** — The row lands in the Supabase `jobs` table as `applied` (or `saved`, for a listing you haven't applied to yet). The default is set on `/settings` and can be changed per job before saving.
+5. **Track** — `/dashboard` lists your applications with counts per status, and flags a saved job's deadline within 3 days in red. Status is a dropdown on each row: saved → applied → interview → offer → rejected. Moving a job to applied stamps today as its date applied if it has none.
+6. **Remind** — A Vercel cron hits `/api/reminders` daily at 13:00 UTC. For each user who has reminders on, it sends one digest via Resend in their language with up to two sections: saved jobs whose deadline falls inside their chosen lead time (marked `reminder_sent`), and applied jobs whose deadline passed in the last week, with a note that applications have closed and to watch for an email (marked `closed_notice_sent`).
 
 ## Stack
 
@@ -55,9 +55,10 @@ Two tables in Supabase.
 | `user_id` | uuid, owner — the dashboard filters on this |
 | `company`, `title`, `location`, `pay`, `url`, `job_type` | text, extracted from the screenshot |
 | `deadline` | date, `YYYY-MM-DD` |
-| `status` | one of `applied`, `interview`, `offer`, `rejected` |
+| `status` | one of `saved`, `applied`, `interview`, `offer`, `rejected` |
 | `notes` | text, optional; shown at the bottom of a card |
-| `reminder_sent` | boolean, so a job is only mailed about once |
+| `reminder_sent` | boolean, so a saved job's deadline reminder goes out once |
+| `closed_notice_sent` | boolean, so an applied job's "applications closed" note goes out once |
 | `created_at` | timestamp, dashboard sorts by this descending |
 
 **`user_settings`** — one row per user, keyed by a unique `user_id`.

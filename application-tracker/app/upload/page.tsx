@@ -8,7 +8,9 @@ import { useLanguage } from '@/lib/language'
 import { useAccount } from '@/lib/account'
 import { errorMessage } from '@/lib/errors'
 import { parsePastedJob } from '@/lib/parseJobText'
-import { EMPTY_JOB, JOB_FIELDS, JobField, JobFieldValues, blankToNull, toJobFieldValues } from '@/lib/jobFields'
+import {
+  EMPTY_JOB, JOB_FIELDS, JobField, JobFieldValues, STATUSES, Status, blankToNull, toJobFieldValues, todayISO,
+} from '@/lib/jobFields'
 import { AppHeader } from '@/components/AppHeader'
 import { JobFields } from '@/components/JobFields'
 import { LoadingScreen } from '@/components/LoadingScreen'
@@ -19,7 +21,8 @@ import {
 type Mode = 'screenshot' | 'paste' | 'manual'
 const MODES: Mode[] = ['screenshot', 'paste', 'manual']
 
-const todayISO = () => new Date().toISOString().split('T')[0]
+// A job saved for later has no date applied yet, so the form hides it.
+const NOT_APPLIED_YET: ReadonlySet<JobField> = new Set(['date_applied'])
 
 // The fields an extraction actually filled. Date applied is always set to
 // today by us, so it never counts as found.
@@ -45,6 +48,8 @@ export default function UploadPage() {
   const [pasteText, setPasteText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [needsKey, setNeedsKey] = useState(false)
+  // Null until the user picks one, so the account's default applies.
+  const [status, setStatus] = useState<Status | null>(null)
 
   const showPreview = (url: string | null) => {
     if (previewUrl.current) URL.revokeObjectURL(previewUrl.current)
@@ -75,7 +80,7 @@ export default function UploadPage() {
 
   if (!account) return <LoadingScreen />
 
-  const defaultStatus = account.settings?.default_status ?? 'applied'
+  const saveAs = status ?? account.settings?.default_status ?? 'applied'
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
@@ -151,7 +156,9 @@ export default function UploadPage() {
     try {
       const { error } = await supabase.from('jobs').insert([{
         ...blankToNull(values),
-        status: defaultStatus,
+        // A saved job hasn't been applied to, whatever the form's date says.
+        ...(saveAs === 'saved' && { date_applied: null }),
+        status: saveAs,
         user_id: account.user.id,
       }])
       if (error) throw error
@@ -320,7 +327,12 @@ export default function UploadPage() {
             </div>
 
             <div style={{ padding: '20px 24px' }}>
-              <JobFields values={values} onChange={setValues} highlighted={found} />
+              <JobFields
+                values={values}
+                onChange={setValues}
+                highlighted={found}
+                hidden={saveAs === 'saved' ? NOT_APPLIED_YET : undefined}
+              />
             </div>
 
             {error && (
@@ -340,9 +352,23 @@ export default function UploadPage() {
             )}
 
             <div style={{ padding: '16px 24px 20px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
-              <span style={{ fontSize: '13px', color: 'var(--text-secondary)', marginRight: 'auto' }}>
-                {t('upload.savesAs')}{' '}
-                <strong style={{ color: `var(--status-${defaultStatus}-fg)`, fontWeight: 600 }}>{t(`status.${defaultStatus}`)}</strong>
+              <span style={{ fontSize: '13px', color: 'var(--text-secondary)', marginRight: 'auto', display: 'inline-flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                <label htmlFor="save-as-status">{t('upload.savesAs')}</label>
+                <select
+                  id="save-as-status"
+                  value={saveAs}
+                  onChange={(e) => setStatus(e.target.value as Status)}
+                  className="status-color"
+                  style={{
+                    background: `var(--status-${saveAs}-bg)`, color: `var(--status-${saveAs}-fg)`,
+                    border: 'none', borderRadius: '999px', padding: '4px 10px',
+                    fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  {STATUSES.map(value => (
+                    <option key={value} value={value}>{t(`status.${value}`)}</option>
+                  ))}
+                </select>
                 {' · '}
                 <Link href="/settings" className="link-accent">{t('upload.changeDefault')}</Link>
               </span>

@@ -57,11 +57,14 @@ export default function EditPage() {
     setError(null)
     try {
       // The reminder job skips rows already marked sent, so a moved deadline
-      // needs the flag cleared or its new date would never get a reminder.
+      // needs both flags cleared or its new date would never get an email.
       const deadlineChanged = loaded.values.deadline !== loaded.originalDeadline
       const { error } = await supabase
         .from('jobs')
-        .update({ ...blankToNull(loaded.values), ...(deadlineChanged && { reminder_sent: false }) })
+        .update({
+          ...blankToNull(loaded.values),
+          ...(deadlineChanged && { reminder_sent: false, closed_notice_sent: false }),
+        })
         .eq('id', id)
       if (error) throw error
       router.push('/dashboard')

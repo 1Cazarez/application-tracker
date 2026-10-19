@@ -1,5 +1,11 @@
-export const STATUSES = ['applied', 'interview', 'offer', 'rejected'] as const
+// 'saved' is a listing not applied to yet: the only status whose deadline is
+// still something to act on.
+export const STATUSES = ['saved', 'applied', 'interview', 'offer', 'rejected'] as const
 export type Status = (typeof STATUSES)[number]
+
+export function todayISO() {
+  return new Date().toISOString().split('T')[0]
+}
 
 // The editable details of an application, in form order.
 export const JOB_FIELDS = ['company', 'title', 'date_applied', 'deadline', 'pay', 'location', 'url', 'job_type'] as const
@@ -18,7 +24,10 @@ export type Job = Record<Exclude<JobField, 'company' | 'title'>, string | null> 
   user_id: string | null
   status: Status
   notes: string | null
+  // Set once the "deadline coming up" email for a saved job goes out.
   reminder_sent: boolean
+  // Set once the "applications have closed" email for an applied job goes out.
+  closed_notice_sent: boolean
   created_at: string
 }
 

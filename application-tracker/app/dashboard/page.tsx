@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion } from '@/lib/motion'
 import { useLanguage } from '@/lib/language'
 import { useAccount } from '@/lib/account'
-import { Job, STATUSES, Status } from '@/lib/jobFields'
+import { Job, STATUSES, Status, todayISO } from '@/lib/jobFields'
 import Link from 'next/link'
 import { AppHeader } from '@/components/AppHeader'
 import { CompanyLogo } from '@/components/CompanyLogo'
@@ -45,7 +45,8 @@ function relativeDay(timestamp: string, language: string) {
 }
 
 const STATUS_STYLES: Record<Status, { background: string; color: string }> = {
-  applied:   { background: 'var(--status-applied-bg)', color: 'var(--status-applied-fg)' },
+  saved:     { background: 'var(--status-saved-bg)', color: 'var(--status-saved-fg)' },
+  applied:  { background: 'var(--status-applied-bg)', color: 'var(--status-applied-fg)' },
   interview: { background: 'var(--status-interview-bg)', color: 'var(--status-interview-fg)' },
   offer:     { background: 'var(--status-offer-bg)', color: 'var(--status-offer-fg)' },
   rejected:  { background: 'var(--status-rejected-bg)', color: 'var(--status-rejected-fg)' },
@@ -80,8 +81,14 @@ export default function Dashboard() {
   }, [account])
 
   const updateStatus = async (id: string, status: Status) => {
-    await supabase.from('jobs').update({ status }).eq('id', id)
-    setJobs(current => current && current.map(job => job.id === id ? { ...job, status } : job))
+    // Moving a saved job to applied means it was just submitted, so stamp
+    // today as the date applied unless one was already entered.
+    const job = jobs?.find(j => j.id === id)
+    const changes = status === 'applied' && job && !job.date_applied
+      ? { status, date_applied: todayISO() }
+      : { status }
+    await supabase.from('jobs').update(changes).eq('id', id)
+    setJobs(current => current && current.map(j => j.id === id ? { ...j, ...changes } : j))
   }
 
   const listRef = useRef<HTMLTableSectionElement>(null)
@@ -128,11 +135,15 @@ export default function Dashboard() {
     STATUSES.map(status => [status, jobs.filter(job => job.status === status).length]),
   ) as Record<Status, number>
   const addedThisWeek = jobs.filter(job => isWithinLastWeek(job.created_at)).length
-  const heardBack = total - counts.applied
   const percentOf = (count: number) => (total ? Math.round((count / total) * 100) : 0)
+  // Saved jobs haven't been sent anywhere, so they don't count toward responses.
+  const submitted = total - counts.saved
+  const heardBack = counts.interview + counts.offer + counts.rejected
+  const responseRate = submitted ? Math.round((heardBack / submitted) * 100) : 0
 
+  // Only saved jobs still have a deadline to act on.
   const upcoming = jobs
-    .filter(job => job.deadline && job.status !== 'rejected' && daysUntil(job.deadline) >= 0)
+    .filter(job => job.deadline && job.status === 'saved' && daysUntil(job.deadline) >= 0)
     .sort((a, b) => (a.deadline ?? '').localeCompare(b.deadline ?? ''))
   const dueThisWeek = upcoming.filter(job => daysUntil(job.deadline ?? '') <= 7).length
 
@@ -151,7 +162,7 @@ export default function Dashboard() {
     },
     { label: t('dashboard.statInterviews'), value: counts.interview, note: t('dashboard.shareOfTotal', { percent: percentOf(counts.interview) }) },
     { label: t('dashboard.statOffers'), value: counts.offer, note: t('dashboard.shareOfTotal', { percent: percentOf(counts.offer) }) },
-    { label: t('dashboard.statResponse'), value: `${percentOf(heardBack)}%`, note: t('dashboard.heardBack', { count: heardBack, total }) },
+    { label: t('dashboard.statResponse'), value: `${responseRate}%`, note: t('dashboard.heardBack', { count: heardBack, total: submitted }) },
   ]
 
   return (
@@ -276,7 +287,7 @@ export default function Dashboard() {
                       {visible.map(job => {
                         const days = job.deadline ? daysUntil(job.deadline) : null
                         const status = STATUS_STYLES[job.status] ?? STATUS_STYLES.applied
-                        const urgent = days !== null && days >= 0 && days <= 3
+                        const urgent = job.status === 'saved' && days !== null && days >= 0 && days <= 3
                         const details = [job.location, job.job_type, job.pay].filter(Boolean).join(' · ')
                         return (
                           <tr key={job.id} data-job-id={job.id} className="job-row">

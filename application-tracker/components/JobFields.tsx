@@ -21,17 +21,19 @@ const FIELD_ICONS: Record<JobField, typeof BuildingIcon> = {
 const REQUIRED: ReadonlySet<JobField> = new Set(['company', 'title'])
 
 // highlighted marks the fields that were filled in for the user (by Gemini or
-// the paste parser), so they know which ones to double-check.
-export function JobFields({ values, onChange, highlighted }: {
+// the paste parser), so they know which ones to double-check. hidden leaves
+// fields out of the form without dropping their values.
+export function JobFields({ values, onChange, highlighted, hidden }: {
   values: JobFieldValues
   onChange: (values: JobFieldValues) => void
   highlighted?: ReadonlySet<JobField>
+  hidden?: ReadonlySet<JobField>
 }) {
   const { t } = useLanguage()
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-      {JOB_FIELDS.map(field => {
+      {JOB_FIELDS.filter(field => !hidden?.has(field)).map(field => {
         const Icon = FIELD_ICONS[field]
         const filled = highlighted?.has(field) ?? false
         return (

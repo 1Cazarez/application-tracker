@@ -87,5 +87,18 @@ with checks as (
   union all select 19, 'jobs.date_applied exists',
     exists (select 1 from information_schema.columns
       where table_schema = 'public' and table_name = 'jobs' and column_name = 'date_applied')
+
+  -- 0004: saved status
+  union all select 20, 'jobs.closed_notice_sent exists',
+    exists (select 1 from information_schema.columns
+      where table_schema = 'public' and table_name = 'jobs' and column_name = 'closed_notice_sent')
+
+  union all select 21, 'jobs status constraint allows saved',
+    exists (select 1 from pg_constraint
+      where conname = 'jobs_status_check' and pg_get_constraintdef(oid) ilike '%saved%')
+
+  union all select 22, 'default_status constraint allows saved',
+    exists (select 1 from pg_constraint
+      where conname = 'user_settings_default_status_check' and pg_get_constraintdef(oid) ilike '%saved%')
 )
 select seq, check_name, ok from checks order by seq;
