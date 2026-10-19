@@ -4,6 +4,7 @@ import "./globals.css";
 import { Analytics } from '@vercel/analytics/react'
 import { LanguageProvider } from '@/lib/language'
 import { ThemeProvider } from '@/lib/theme'
+import { AppToaster } from '@/components/AppToaster'
 import { THEME_INIT_SCRIPT } from '@/lib/theme-config'
 
 const geistSans = Geist({
@@ -35,6 +36,7 @@ export default function RootLayout({
       <body>
         <ThemeProvider>
           <LanguageProvider>{children}</LanguageProvider>
+          <AppToaster />
         </ThemeProvider>
         <Analytics />
       </body>

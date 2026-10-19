@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -13,6 +13,7 @@ import { useTheme } from '@/lib/theme'
 import { ACCENTS, ACCENT_SWATCHES, THEME_MODES, ThemeMode } from '@/lib/theme-config'
 import { AppHeader } from '@/components/AppHeader'
 import { LoadingScreen } from '@/components/LoadingScreen'
+import { Segmented } from '@/components/Segmented'
 import {
   LogOutIcon, CheckIcon, SparklesIcon, BellIcon, BriefcaseIcon, GlobeIcon, UserIcon, MinusIcon, PlusIcon,
 } from '@/lib/icons'
@@ -91,6 +92,14 @@ function SettingsForm({ account }: { account: Account }) {
   const [defaultStatus, setDefaultStatus] = useState<Status>(saved.defaultStatus)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [justSaved, setJustSaved] = useState(false)
+
+  // After a save the bar confirms for a moment, then slides away.
+  useEffect(() => {
+    if (!justSaved) return
+    const timer = window.setTimeout(() => setJustSaved(false), 1500)
+    return () => window.clearTimeout(timer)
+  }, [justSaved])
 
   const dirty =
     geminiKey.trim() !== saved.geminiKey ||
@@ -125,6 +134,7 @@ function SettingsForm({ account }: { account: Account }) {
       setSaved(next)
       setGeminiKey(next.geminiKey)
       setReminderDays(next.reminderDays)
+      setJustSaved(true)
     } catch (err) {
       setError(errorMessage(err))
     } finally {
@@ -140,6 +150,9 @@ function SettingsForm({ account }: { account: Account }) {
     setLanguage(saved.language)
     setError(null)
   }
+
+  const saveBarVisible = dirty || saving || error !== null || justSaved
+  const showSavedCheck = justSaved && !dirty && !error
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -322,20 +335,13 @@ function SettingsForm({ account }: { account: Account }) {
                   <span id="language-label" style={labelStyle}>{t('settings.languageHeading')}</span>
                   <p style={helpStyle}>{t('settings.languageHelp')}</p>
                 </div>
-                <div role="radiogroup" aria-labelledby="language-label" className="segmented">
-                  {LANGUAGES.map(code => (
-                    <button
-                      key={code}
-                      type="button"
-                      role="radio"
-                      aria-checked={language === code}
-                      lang={code}
-                      onClick={() => setLanguage(code)}
-                    >
-                      {LANGUAGE_NAMES[code]}
-                    </button>
-                  ))}
-                </div>
+                <Segmented
+                  kind="radio"
+                  aria-labelledby="language-label"
+                  value={language}
+                  onChange={setLanguage}
+                  options={LANGUAGES.map(code => ({ value: code, label: LANGUAGE_NAMES[code], buttonProps: { lang: code } }))}
+                />
               </div>
               <div style={{ ...rowStyle, ...dividerStyle, flexDirection: 'column', alignItems: 'stretch', gap: '14px' }}>
                 <span id="theme-label" style={labelStyle}>{t('settings.themeMode')}</span>
@@ -384,41 +390,6 @@ function SettingsForm({ account }: { account: Account }) {
               </div>
             </section>
 
-            <div
-              role="region"
-              aria-label={t('settings.saveBar')}
-              style={{
-                position: 'sticky', bottom: '16px', zIndex: 1,
-                display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: '12px 16px',
-                padding: '12px 14px 12px 20px', borderRadius: 'var(--radius-lg)',
-                background: 'var(--primary)', color: 'var(--on-primary)', boxShadow: 'var(--shadow-lg)',
-              }}
-            >
-              <span aria-live="polite" style={{ marginRight: 'auto', display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
-                <span className="dot" style={{ width: 8, height: 8, color: error ? 'var(--danger)' : dirty ? 'var(--warning)' : 'var(--success)' }} />
-                {error ?? (dirty ? t('settings.unsaved') : t('settings.saved'))}
-              </span>
-              <button
-                type="button"
-                onClick={handleDiscard}
-                disabled={!dirty || saving}
-                className="btn"
-                style={{ background: 'transparent', color: 'inherit', borderColor: 'color-mix(in srgb, currentColor 30%, transparent)' }}
-              >
-                {t('settings.discard')}
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={!dirty || saving}
-                className="btn"
-                style={{ background: 'var(--on-primary)', color: 'var(--primary)' }}
-              >
-                {saving && <span className="spinner" />}
-                {saving ? t('settings.saving') : t('settings.save')}
-              </button>
-            </div>
-
             <section id="account" aria-labelledby="account-heading" className="card anchor-section">
               <div style={sectionHeaderStyle}>
                 <h2 id="account-heading" style={titleStyle}>{t('settings.accountHeading')}</h2>
@@ -443,6 +414,46 @@ function SettingsForm({ account }: { account: Account }) {
                 </div>
               </div>
             </section>
+
+            <div
+              role="region"
+              aria-label={t('settings.saveBar')}
+              // Only shown while there's something to save or to confirm.
+              className={saveBarVisible ? 'save-bar' : 'save-bar save-bar-hidden'}
+              inert={!saveBarVisible}
+              style={{
+                position: 'sticky', bottom: '16px', zIndex: 1,
+                display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: '12px 16px',
+                padding: '12px 14px 12px 20px', borderRadius: 'var(--radius-lg)',
+                background: 'var(--primary)', color: 'var(--on-primary)', boxShadow: 'var(--shadow-lg)',
+              }}
+            >
+              <span aria-live="polite" style={{ marginRight: 'auto', display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
+                {showSavedCheck
+                  ? <CheckIcon size={14} strokeWidth={3} className="pop-in" style={{ color: 'var(--success)' }} />
+                  : <span className="dot" style={{ width: 8, height: 8, color: error ? 'var(--danger)' : dirty ? 'var(--warning)' : 'var(--success)' }} />}
+                {error ?? (dirty ? t('settings.unsaved') : t('settings.saved'))}
+              </span>
+              <button
+                type="button"
+                onClick={handleDiscard}
+                disabled={!dirty || saving}
+                className="btn"
+                style={{ background: 'transparent', color: 'inherit', borderColor: 'color-mix(in srgb, currentColor 30%, transparent)' }}
+              >
+                {t('settings.discard')}
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={!dirty || saving}
+                className="btn"
+                style={{ background: 'var(--on-primary)', color: 'var(--primary)' }}
+              >
+                {saving && <span className="spinner" />}
+                {saving ? t('settings.saving') : t('settings.save')}
+              </button>
+            </div>
 
           </div>
         </div>

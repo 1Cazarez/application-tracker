@@ -11,6 +11,7 @@ import { parsePastedJob } from '@/lib/parseJobText'
 import { EMPTY_JOB, JOB_FIELDS, JobField, JobFieldValues, blankToNull, toJobFieldValues } from '@/lib/jobFields'
 import { AppHeader } from '@/components/AppHeader'
 import { JobFields } from '@/components/JobFields'
+import { Segmented } from '@/components/Segmented'
 import { LoadingScreen } from '@/components/LoadingScreen'
 import {
   UploadCloudIcon, SparklesIcon, CheckCircleIcon, AlertCircleIcon, XIcon, PencilIcon,
@@ -42,6 +43,8 @@ export default function UploadPage() {
   const [saving, setSaving] = useState(false)
   const [values, setValues] = useState<JobFieldValues>(() => ({ ...EMPTY_JOB, date_applied: todayISO() }))
   const [found, setFound] = useState<ReadonlySet<JobField>>(new Set())
+  // Bumped on every fill so JobFields remounts and replays the fill reveal.
+  const [fillRun, setFillRun] = useState(0)
   const [pasteText, setPasteText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [needsKey, setNeedsKey] = useState(false)
@@ -105,6 +108,7 @@ export default function UploadPage() {
     const parsed = parsePastedJob(pasteText)
     setValues({ ...EMPTY_JOB, date_applied: values.date_applied || todayISO(), ...parsed })
     setFound(filledFields(parsed))
+    setFillRun(run => run + 1)
     setError(null)
   }
 
@@ -133,6 +137,7 @@ export default function UploadPage() {
       const extracted = toJobFieldValues(data)
       setValues({ ...extracted, date_applied: values.date_applied || todayISO() })
       setFound(filledFields(extracted))
+      setFillRun(run => run + 1)
     } catch (err) {
       setError(errorMessage(err))
     } finally {
@@ -176,21 +181,17 @@ export default function UploadPage() {
               {t('upload.subtitle')}
             </p>
           </div>
-          <div role="tablist" aria-label={t('upload.modeLabel')} className="segmented">
-            {MODES.map(value => (
-              <button
-                key={value}
-                type="button"
-                role="tab"
-                id={`tab-${value}`}
-                aria-selected={mode === value}
-                aria-controls="source-panel"
-                onClick={() => switchMode(value)}
-              >
-                {t(`upload.mode.${value}`)}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            kind="tab"
+            aria-label={t('upload.modeLabel')}
+            value={mode}
+            onChange={switchMode}
+            options={MODES.map(value => ({
+              value,
+              label: t(`upload.mode.${value}`),
+              buttonProps: { id: `tab-${value}`, 'aria-controls': 'source-panel' },
+            }))}
+          />
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', alignItems: 'flex-start' }}>
@@ -320,7 +321,7 @@ export default function UploadPage() {
             </div>
 
             <div style={{ padding: '20px 24px' }}>
-              <JobFields values={values} onChange={setValues} highlighted={found} />
+              <JobFields key={fillRun} values={values} onChange={setValues} highlighted={found} />
             </div>
 
             {error && (

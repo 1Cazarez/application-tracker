@@ -28,12 +28,15 @@ export function JobFields({ values, onChange, highlighted }: {
   highlighted?: ReadonlySet<JobField>
 }) {
   const { t } = useLanguage()
+  // Filled fields reveal one after another, so the stagger counts only them.
+  const filledOrder = JOB_FIELDS.filter(field => highlighted?.has(field))
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
       {JOB_FIELDS.map(field => {
         const Icon = FIELD_ICONS[field]
         const filled = highlighted?.has(field) ?? false
+        const fillDelay = { animationDelay: `${filledOrder.indexOf(field) * 40}ms` }
         return (
           <div key={field} style={{ gridColumn: field === 'url' ? '1 / -1' : undefined }}>
             <label
@@ -47,7 +50,7 @@ export function JobFields({ values, onChange, highlighted }: {
               {t(`field.${field}`)}
               {REQUIRED.has(field) && <span aria-hidden="true" style={{ color: 'var(--danger)' }}>*</span>}
               {filled && (
-                <span role="img" aria-label={t('upload.filledIn')} title={t('upload.filledIn')} style={{ display: 'flex', color: 'var(--accent)' }}>
+                <span role="img" aria-label={t('upload.filledIn')} title={t('upload.filledIn')} className="fill-sparkle" style={{ display: 'flex', color: 'var(--accent)', ...fillDelay }}>
                   <SparklesIcon size={12} strokeWidth={2.25} />
                 </span>
               )}
@@ -55,9 +58,9 @@ export function JobFields({ values, onChange, highlighted }: {
             <input
               id={`job-field-${field}`}
               type={DATE_FIELDS.has(field) ? 'date' : 'text'}
-              className="field-input"
+              className={filled ? 'field-input field-filled' : 'field-input'}
               required={REQUIRED.has(field)}
-              style={filled ? { background: 'color-mix(in srgb, var(--accent-soft) 45%, var(--surface))' } : undefined}
+              style={filled ? fillDelay : undefined}
               value={values[field]}
               onChange={(e) => onChange({ ...values, [field]: e.target.value })}
             />

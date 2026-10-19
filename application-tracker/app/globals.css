@@ -569,9 +569,12 @@ summary:focus-visible {
   flex-shrink: 0;
 }
 
-/* Segmented control, for tabs and two-to-three-way choices */
+/* Segmented control, for tabs and two-to-three-way choices. See
+   components/Segmented.tsx: .segmented-active is a selected-looking copy of
+   the options, clipped to the selected one, and the clip slides on change. */
 
 .segmented {
+  position: relative;
   display: inline-flex;
   flex-wrap: wrap;
   gap: 4px;
@@ -580,7 +583,8 @@ summary:focus-visible {
   background: var(--border);
 }
 
-.segmented > button {
+.segmented > button,
+.segmented-active > span {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -588,23 +592,57 @@ summary:focus-visible {
   padding: 0 14px;
   border: none;
   border-radius: 9px;
-  background: transparent;
-  color: var(--text-secondary);
   font-size: 14px;
   font-weight: 600;
+}
+
+.segmented > button {
+  background: transparent;
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  transition: color 0.15s ease;
 }
 
 .segmented > button:hover {
   color: var(--text-primary);
 }
 
-.segmented > button[aria-selected='true'],
-.segmented > button[aria-checked='true'] {
+/* Before the copy is placed (server render), the real button shows the
+   selection. */
+.segmented:not(:has(.segmented-active[data-ready])) > button:is([aria-selected='true'], [aria-checked='true']) {
   background: var(--surface);
   color: var(--text-primary);
   box-shadow: var(--shadow-sm);
+}
+
+.segmented-active {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  pointer-events: none;
+  clip-path: inset(0 100% 0 0);
+  visibility: hidden;
+}
+
+.segmented-active[data-ready] {
+  visibility: visible;
+  transition: clip-path 0.25s var(--ease-in-out);
+}
+
+/* The clip would cut off an outer shadow, so the edge is an inset ring. */
+.segmented-active > span {
+  background: var(--surface);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border-strong) 60%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segmented-active[data-ready] {
+    transition: none;
+  }
 }
 
 /* Toggle switch */
@@ -747,4 +785,268 @@ summary:focus-visible {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* Loading screen crest: three dots tracing a triangle */
+
+.crest-loader {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  color: var(--accent);
+  opacity: 0;
+  animation: crestAppear 0.2s var(--ease-out) 0.3s forwards;
+}
+
+.crest-loader svg {
+  display: block;
+}
+
+.crest-dot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 2px var(--bg);
+  animation: crestOrbit 1.8s linear infinite;
+}
+
+.crest-dot:nth-of-type(2) {
+  animation-delay: -0.6s;
+}
+
+.crest-dot:nth-of-type(3) {
+  animation-delay: -1.2s;
+}
+
+@keyframes crestAppear {
+  to {
+    opacity: 1;
+  }
+}
+
+/* Vertices (20,4), (37,33), (3,33), offset by the dot's 3px radius. */
+@keyframes crestOrbit {
+  0%,
+  100% {
+    transform: translate(17px, 1px);
+  }
+  33.333% {
+    transform: translate(34px, 30px);
+  }
+  66.666% {
+    transform: translate(0, 30px);
+  }
+}
+
+@keyframes crestPulse {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crest-dot {
+    display: none;
+  }
+
+  .crest-loader svg {
+    animation: crestPulse 1.6s ease-in-out infinite alternate;
+  }
+}
+
+/* Upload: fields filled in by Gemini or the paste parser reveal in turn.
+   The per-field animation-delay is set inline. backwards fill holds the
+   unfilled look while a field waits its turn. */
+
+.field-input.field-filled {
+  background: color-mix(in srgb, var(--accent-soft) 45%, var(--surface));
+  animation: fieldFill 0.5s var(--ease-out) backwards;
+}
+
+@keyframes fieldFill {
+  0% {
+    background-color: var(--surface);
+    box-shadow: 0 0 0 0 var(--accent-soft);
+  }
+  40% {
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+}
+
+.fill-sparkle {
+  animation: popIn 0.3s var(--ease-out) backwards;
+}
+
+.pop-in {
+  animation: popIn 0.2s var(--ease-out) backwards;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+@keyframes fieldFillReduced {
+  from {
+    background-color: var(--surface);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field-input.field-filled {
+    animation-name: fieldFillReduced;
+  }
+
+  .fill-sparkle,
+  .pop-in {
+    animation-name: fadeIn;
+  }
+}
+
+/* Settings save bar: slides up while there are unsaved changes, and back
+   down the same way once they're saved. */
+
+.save-bar {
+  transition: transform 0.25s var(--ease-out), opacity 0.25s var(--ease-out);
+}
+
+.save-bar-hidden {
+  transform: translateY(calc(100% + 16px));
+  opacity: 0;
+}
+
+.save-bar .dot {
+  transition: color 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .save-bar-hidden {
+    transform: none;
+  }
+}
+
+/* Landing page. Marketing surface, so timings run longer than app UI. */
+
+.hero-in {
+  animation: heroIn 0.6s var(--ease-out) backwards;
+}
+
+@keyframes heroIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+[data-reveal] {
+  transition: clip-path 0.6s var(--ease-in-out);
+}
+
+[data-reveal]:not([data-visible]) {
+  clip-path: inset(0 0 100% 0);
+}
+
+/* Preview demo, played once when it reveals: the screenshot is scanned, the
+   fields fill in, the badge confirms, and the job lands in the dashboard. */
+
+.demo-scan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent 70%, color-mix(in srgb, var(--accent) 22%, transparent) 97%, var(--accent));
+  opacity: 0;
+  transform: translateY(-100%);
+}
+
+.demo[data-visible] .demo-scan {
+  animation: demoScan 0.8s var(--ease-in-out) 0.3s;
+}
+
+@keyframes demoScan {
+  0% {
+    opacity: 1;
+    transform: translateY(-100%);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
+
+.demo[data-visible] .demo-field {
+  animation: demoIn 0.4s var(--ease-out) backwards;
+}
+
+.demo[data-visible] .demo-badge {
+  animation: popIn 0.2s var(--ease-out) 1.7s backwards;
+}
+
+.demo[data-visible] .demo-new-row {
+  animation: demoIn 0.4s var(--ease-out) 1.8s backwards;
+}
+
+@keyframes demoIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* FAQ answers open smoothly where ::details-content is supported; other
+   browsers open them instantly, as before. */
+
+@supports selector(::details-content) {
+  .faq {
+    interpolate-size: allow-keywords;
+  }
+
+  .faq::details-content {
+    block-size: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition:
+      block-size 0.2s var(--ease-out),
+      opacity 0.2s var(--ease-out),
+      content-visibility 0.2s allow-discrete;
+  }
+
+  .faq[open]::details-content {
+    block-size: auto;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-in {
+    animation-name: fadeIn;
+  }
+
+  [data-reveal] {
+    transition: opacity 0.6s ease;
+  }
+
+  [data-reveal]:not([data-visible]) {
+    clip-path: none;
+    opacity: 0;
+  }
+
+  .demo[data-visible] :is(.demo-scan, .demo-field, .demo-badge, .demo-new-row) {
+    animation: none;
+  }
+
+  .faq::details-content {
+    transition: none;
+  }
 }

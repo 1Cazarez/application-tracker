@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
+import { supabase, supabaseKey, supabaseUrl } from '@/lib/supabase'
 import { EASE_IN_OUT, EASE_OUT, prefersReducedMotion } from '@/lib/motion'
 import { useLanguage } from '@/lib/language'
 import { useAccount } from '@/lib/account'
@@ -17,6 +18,8 @@ import {
 const DAY_MS = 1000 * 60 * 60 * 24
 const UPCOMING_LIMIT = 5
 const RECENT_LIMIT = 4
+const UNDO_MS = 5000
+const UNDO_TOAST_ID = 'undo-delete'
 
 function daysUntil(deadline: string) {
   return Math.ceil((new Date(deadline).getTime() - Date.now()) / DAY_MS)
@@ -85,16 +88,30 @@ export default function Dashboard() {
   }
 
   const listRef = useRef<HTMLTableSectionElement>(null)
-  // Row tops captured just before a removal, so the rows below can slide
-  // up into the gap instead of jumping (FLIP).
-  const topsBeforeRemoval = useRef<Map<string, number> | null>(null)
+  // Row tops captured just before rows are removed or restored, so the other
+  // rows can slide into place instead of jumping (FLIP).
+  const topsBefore = useRef<Map<string, number> | null>(null)
+  // Rows just brought back by Undo, which fade in instead of appearing.
+  const restoredIds = useRef<Set<string>>(new Set())
+  // Deleted rows waiting out the undo window before they leave the database.
+  const pendingDeletes = useRef<Job[]>([])
+  const commitTimer = useRef<number | undefined>(undefined)
+  // Cached because a pagehide handler can't wait for getSession().
+  const accessToken = useRef<string | null>(null)
 
   useLayoutEffect(() => {
-    const before = topsBeforeRemoval.current
-    topsBeforeRemoval.current = null
-    if (!before || !listRef.current) return
+    const before = topsBefore.current
+    const restored = restoredIds.current
+    topsBefore.current = null
+    restoredIds.current = new Set()
+    if (!listRef.current) return
     for (const row of Array.from(listRef.current.children) as HTMLElement[]) {
-      const top = before.get(row.dataset.jobId ?? '')
+      const id = row.dataset.jobId ?? ''
+      if (restored.has(id)) {
+        row.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: EASE_OUT })
+        continue
+      }
+      const top = before?.get(id)
       if (top === undefined) continue
       const dy = top - row.getBoundingClientRect().top
       if (dy === 0) continue
@@ -105,21 +122,107 @@ export default function Dashboard() {
     }
   }, [jobs])
 
-  const deleteJob = async (id: string, row: HTMLElement) => {
-    const reduce = prefersReducedMotion()
-    const exit = row.animate(
-      [{ opacity: 1 }, { opacity: 0 }],
-      { duration: 200, easing: EASE_OUT, fill: 'forwards' },
+  const captureRowTops = () => {
+    if (prefersReducedMotion() || !listRef.current) return
+    topsBefore.current = new Map(
+      (Array.from(listRef.current.children) as HTMLElement[])
+        .map(el => [el.dataset.jobId ?? '', el.getBoundingClientRect().top]),
     )
-    await Promise.all([supabase.from('jobs').delete().eq('id', id), exit.finished])
-    if (!reduce && listRef.current) {
-      topsBeforeRemoval.current = new Map(
-        (Array.from(listRef.current.children) as HTMLElement[])
-          .map(el => [el.dataset.jobId ?? '', el.getBoundingClientRect().top]),
-      )
-    }
-    setJobs(current => current && current.filter(job => job.id !== id))
   }
+
+  const restoreRows = (rows: Job[]) => {
+    captureRowTops()
+    restoredIds.current = new Set(rows.map(row => row.id))
+    setJobs(current => {
+      if (!current) return current
+      const missing = rows.filter(row => !current.some(job => job.id === row.id))
+      return [...current, ...missing].sort((a, b) => b.created_at.localeCompare(a.created_at))
+    })
+  }
+
+  const takePendingDeletes = () => {
+    window.clearTimeout(commitTimer.current)
+    toast.dismiss(UNDO_TOAST_ID)
+    const rows = pendingDeletes.current
+    pendingDeletes.current = []
+    return rows
+  }
+
+  const commitDeletes = async () => {
+    const rows = takePendingDeletes()
+    if (rows.length === 0) return
+    const { error } = await supabase.from('jobs').delete().in('id', rows.map(row => row.id))
+    if (error) {
+      restoreRows(rows)
+      toast.error(t('dashboard.deleteFailed'))
+    }
+  }
+
+  const undoDeletes = () => {
+    const rows = takePendingDeletes()
+    if (rows.length > 0) restoreRows(rows)
+  }
+
+  const deleteJob = async (job: Job, row: HTMLElement) => {
+    if (pendingDeletes.current.some(pending => pending.id === job.id)) return
+    supabase.auth.getSession().then(({ data }) => { accessToken.current = data.session?.access_token ?? null })
+
+    pendingDeletes.current = [...pendingDeletes.current, job]
+    const count = pendingDeletes.current.length
+    toast(count === 1 ? t('dashboard.deleted', { company: job.company }) : t('dashboard.deletedMany', { count }), {
+      id: UNDO_TOAST_ID,
+      duration: Infinity,
+      action: { label: t('dashboard.undo'), onClick: undoDeletes },
+    })
+    window.clearTimeout(commitTimer.current)
+    commitTimer.current = window.setTimeout(commitDeletes, UNDO_MS)
+
+    const exit = row.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: EASE_OUT, fill: 'forwards' })
+    await exit.finished
+    // Undone while it was still fading out: keep the row.
+    if (!pendingDeletes.current.some(pending => pending.id === job.id)) {
+      exit.cancel()
+      return
+    }
+    captureRowTops()
+    setJobs(current => current && current.filter(other => other.id !== job.id))
+  }
+
+  const onLeave = useEffectEvent(() => { commitDeletes() })
+  const onUndoShortcut = useEffectEvent((e: KeyboardEvent) => {
+    if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.key.toLowerCase() !== 'z') return
+    if (pendingDeletes.current.length === 0) return
+    // Inside a text field, Ctrl/Cmd+Z keeps undoing typing.
+    if ((e.target as HTMLElement).closest('input, textarea, select, [contenteditable="true"]')) return
+    e.preventDefault()
+    undoDeletes()
+  })
+
+  useEffect(() => {
+    window.addEventListener('keydown', onUndoShortcut)
+    return () => window.removeEventListener('keydown', onUndoShortcut)
+  }, [])
+
+  // Leaving the dashboard accepts any deletes still in their undo window. On
+  // tab close the page can't wait for supabase-js, so a keepalive request
+  // goes straight to the REST endpoint.
+  useEffect(() => {
+    const onPageHide = () => {
+      const rows = pendingDeletes.current
+      if (rows.length === 0 || !accessToken.current) return
+      pendingDeletes.current = []
+      fetch(`${supabaseUrl}/rest/v1/jobs?id=in.(${rows.map(row => row.id).join(',')})`, {
+        method: 'DELETE',
+        keepalive: true,
+        headers: { apikey: supabaseKey, Authorization: `Bearer ${accessToken.current}` },
+      })
+    }
+    window.addEventListener('pagehide', onPageHide)
+    return () => {
+      window.removeEventListener('pagehide', onPageHide)
+      onLeave()
+    }
+  }, [])
 
   if (!jobs || !account) return <LoadingScreen />
 
@@ -345,7 +448,7 @@ export default function Dashboard() {
                                   title={t('dashboard.delete')}
                                   onClick={(e) => {
                                     const row = e.currentTarget.closest<HTMLElement>('[data-job-id]')
-                                    if (row) deleteJob(job.id, row)
+                                    if (row) deleteJob(job, row)
                                   }}
                                 >
                                   <Trash2Icon size={15} />

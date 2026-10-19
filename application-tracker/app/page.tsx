@@ -9,6 +9,7 @@ import { Status } from '@/lib/jobFields'
 import {
   ArrowRightIcon, BellIcon, BriefcaseIcon, ChartIcon, ClipboardIcon, GlobeIcon, LockIcon, MoonIcon, SparklesIcon,
 } from '@/lib/icons'
+import { Segmented } from '@/components/Segmented'
 
 const GITHUB_URL = 'https://github.com/1Cazarez/application-tracker'
 
@@ -72,6 +73,19 @@ export default function LandingPage() {
     supabase.auth.getSession().then(({ data }) => setSignedIn(Boolean(data.session)))
   }, [])
 
+  // Each [data-reveal] block reveals once, the first time it scrolls in.
+  useEffect(() => {
+    const observer = new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue
+        entry.target.setAttribute('data-visible', '')
+        observer.unobserve(entry.target)
+      }
+    }, { rootMargin: '0px 0px -100px 0px' })
+    document.querySelectorAll('[data-reveal]').forEach(el => observer.observe(el))
+    return () => observer.disconnect()
+  }, [])
+
   const primaryHref = signedIn ? '/dashboard' : '/login'
 
   return (
@@ -106,37 +120,38 @@ export default function LandingPage() {
 
       <main>
         <section style={{ ...wrap, paddingTop: '88px', paddingBottom: '48px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '24px' }}>
-          <span style={{
+          <span className="hero-in" style={{
             display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 12px', borderRadius: '999px',
             background: 'var(--accent-soft)', color: 'var(--accent)', fontSize: '13px', fontWeight: 600,
           }}>
             <SparklesIcon size={14} />
             {t('landing.badge')}
           </span>
-          <h1 style={{ fontSize: 'clamp(40px, 6vw, 68px)', lineHeight: 1.04, fontWeight: 700, letterSpacing: '-0.035em', maxWidth: '880px' }}>
+          <h1 className="hero-in" style={{ fontSize: 'clamp(40px, 6vw, 68px)', lineHeight: 1.04, fontWeight: 700, letterSpacing: '-0.035em', maxWidth: '880px', animationDelay: '60ms' }}>
             {t('landing.headline')}
           </h1>
-          <p style={{ fontSize: '19px', color: 'var(--text-body)', maxWidth: '620px' }}>{t('landing.subhead')}</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '12px', marginTop: '8px' }}>
+          <p className="hero-in" style={{ fontSize: '19px', color: 'var(--text-body)', maxWidth: '620px', animationDelay: '120ms' }}>{t('landing.subhead')}</p>
+          <div className="hero-in" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '12px', marginTop: '8px', animationDelay: '180ms' }}>
             <Link href={primaryHref} className="btn btn-accent" style={bigButton}>
               {signedIn ? t('landing.openDashboard') : t('landing.ctaPrimary')}
               <ArrowRightIcon size={16} strokeWidth={2.25} />
             </Link>
             <a href="#how" className="btn btn-secondary" style={bigButton}>{t('landing.ctaSecondary')}</a>
           </div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>{t('landing.reassurance')}</p>
+          <p className="hero-in" style={{ color: 'var(--text-secondary)', fontSize: '14px', animationDelay: '240ms' }}>{t('landing.reassurance')}</p>
         </section>
 
         <section aria-label={t('landing.previewLabel')} style={{ ...wrap, paddingBottom: '96px' }}>
-          <div style={{ borderRadius: '20px', padding: '14px', background: 'var(--bg)', border: '1px solid var(--border)' }}>
+          <div data-reveal className="demo" style={{ borderRadius: '20px', padding: '14px', background: 'var(--bg)', border: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'stretch' }}>
 
               <div className="card" style={{ flex: '1 1 300px', minWidth: 0, padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <p style={panelLabelStyle}>1 · {t('landing.previewScreenshot')}</p>
                 <div aria-hidden="true" style={{
                   flex: 1, minHeight: '220px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--bg)',
-                  padding: '18px', display: 'flex', flexDirection: 'column', gap: '10px',
+                  padding: '18px', display: 'flex', flexDirection: 'column', gap: '10px', position: 'relative', overflow: 'hidden',
                 }}>
+                  <span className="demo-scan" />
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <span style={{
                       width: 32, height: 32, borderRadius: 8, background: 'var(--accent-soft)', color: 'var(--accent)',
@@ -160,12 +175,13 @@ export default function LandingPage() {
               <div className="card" style={{ flex: '1 1 300px', minWidth: 0, padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '4px' }}>
                   <p style={panelLabelStyle}>2 · {t('landing.previewFilled')}</p>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--status-offer-fg)', background: 'var(--status-offer-bg)', padding: '2px 8px', borderRadius: '999px' }}>
+                  <span className="demo-badge" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--status-offer-fg)', background: 'var(--status-offer-bg)', padding: '2px 8px', borderRadius: '999px' }}>
                     {t('upload.foundCount', { count: PREVIEW_FIELDS.length })}
                   </span>
                 </div>
-                {PREVIEW_FIELDS.map(({ field, value }) => (
-                  <div key={field} style={{
+                {PREVIEW_FIELDS.map(({ field, value }, index) => (
+                  <div key={field} className="demo-field" style={{
+                    animationDelay: `${900 + index * 80}ms`,
                     display: 'flex', justifyContent: 'space-between', gap: '12px', padding: '8px 12px', fontSize: '14px',
                     borderRadius: 8, background: 'var(--bg)', border: '1px solid var(--border)',
                   }}>
@@ -183,8 +199,8 @@ export default function LandingPage() {
                   ))}
                 </div>
                 <ul style={{ listStyle: 'none' }}>
-                  {PREVIEW_JOBS.map(job => (
-                    <li key={job.company} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderTop: '1px solid var(--border)' }}>
+                  {PREVIEW_JOBS.map((job, index) => (
+                    <li key={job.company} className={index === 0 ? 'demo-new-row' : undefined} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderTop: '1px solid var(--border)' }}>
                       <span aria-hidden="true" style={{
                         width: 30, height: 30, borderRadius: 8, background: 'var(--accent-soft)', color: 'var(--accent)',
                         fontWeight: 700, fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
@@ -207,7 +223,7 @@ export default function LandingPage() {
         </section>
 
         <section id="how" className="anchor-section" style={{ background: 'var(--bg)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ ...wrap, paddingTop: '96px', paddingBottom: '96px', display: 'flex', flexDirection: 'column', gap: '48px' }}>
+          <div data-reveal style={{ ...wrap, paddingTop: '96px', paddingBottom: '96px', display: 'flex', flexDirection: 'column', gap: '48px' }}>
             <div style={{ maxWidth: '640px' }}>
               <p style={eyebrowStyle}>{t('landing.navHow')}</p>
               <h2 style={h2Style}>{t('landing.howTitle')}</h2>
@@ -227,11 +243,11 @@ export default function LandingPage() {
         </section>
 
         <section id="features" className="anchor-section" style={{ ...wrap, paddingTop: '96px', paddingBottom: '96px', display: 'flex', flexDirection: 'column', gap: '48px' }}>
-          <div style={{ maxWidth: '640px' }}>
+          <div data-reveal style={{ maxWidth: '640px' }}>
             <p style={eyebrowStyle}>{t('landing.navFeatures')}</p>
             <h2 style={h2Style}>{t('landing.featuresTitle')}</h2>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
+          <div data-reveal style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
             {FEATURES.map(({ Icon, title, body }) => (
               <div key={title} style={{ border: '1px solid var(--border)', borderRadius: '16px', padding: '28px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <span style={{
@@ -248,7 +264,7 @@ export default function LandingPage() {
         </section>
 
         <section id="faq" className="anchor-section" style={{ background: 'var(--bg)', borderTop: '1px solid var(--border)' }}>
-          <div style={{ maxWidth: '760px', margin: '0 auto', padding: '96px 24px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
+          <div data-reveal style={{ maxWidth: '760px', margin: '0 auto', padding: '96px 24px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
             <h2 style={{ ...h2Style, textAlign: 'center' }}>{t('landing.faqTitle')}</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {FAQ.map(({ question, answer }, index) => (
@@ -262,7 +278,7 @@ export default function LandingPage() {
         </section>
 
         <section style={{ ...wrap, paddingTop: '96px', paddingBottom: '96px' }}>
-          <div style={{
+          <div data-reveal style={{
             borderRadius: '24px', background: 'var(--primary)', color: 'var(--on-primary)', padding: '64px 32px',
             display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '20px',
           }}>
@@ -280,13 +296,13 @@ export default function LandingPage() {
           <span>Application Tracker</span>
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '20px' }}>
             <a href={GITHUB_URL} target="_blank" rel="noreferrer" style={{ color: 'var(--text-body)' }}>GitHub</a>
-            <div role="radiogroup" aria-label={t('settings.languageHeading')} className="segmented">
-              {LANGUAGES.map(code => (
-                <button key={code} type="button" role="radio" aria-checked={language === code} lang={code} onClick={() => setLanguage(code)}>
-                  {LANGUAGE_NAMES[code]}
-                </button>
-              ))}
-            </div>
+            <Segmented
+              kind="radio"
+              aria-label={t('settings.languageHeading')}
+              value={language}
+              onChange={setLanguage}
+              options={LANGUAGES.map(code => ({ value: code, label: LANGUAGE_NAMES[code], buttonProps: { lang: code } }))}
+            />
           </div>
         </div>
       </footer>
